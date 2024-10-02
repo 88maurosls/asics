@@ -3,6 +3,12 @@ import pandas as pd
 import io
 
 # Function to process each uploaded file
+def format_taglia(size_us):
+    size_str = str(size_us)
+    if ".0" in size_str:
+        size_str = size_str.replace(".0", "")  # Rimuovi il .0
+    return size_str.replace(".5", "+")  # Converti .5 in +
+
 def process_file(file):
     df = pd.read_excel(file, dtype={'Color code': str})  # Leggi la colonna "Color code" come stringa
     
@@ -18,7 +24,7 @@ def process_file(file):
         "Sigla Bimbo": "",
         "Costo": df["Unit price"],
         "Retail": df["Unit price"] * 2,
-        "Taglia": df["Size US"].apply(lambda x: str(x).replace(".5", "+")),
+        "Taglia": df["Size US"].apply(format_taglia),  # Formatta la colonna Taglia
         "Barcode": df["EAN code"],
         "Qta": df["Quantity"],
         "Tot Costo": "",
@@ -33,6 +39,7 @@ def process_file(file):
     })
     
     return output_df
+
 
 
 # Streamlit app starts here
