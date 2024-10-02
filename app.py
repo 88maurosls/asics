@@ -85,6 +85,10 @@ if uploaded_files:
                 "gender": gender
             }
             response = requests.post(google_apps_script_url, json=data)
+            
+            # Stampa la risposta completa
+            st.write(f"Risposta per {articolo} - {colore}: {response.text}")
+            
             if response.status_code == 200:
                 st.success(f"Inviato: {articolo} - {colore} - {gender}")
             else:
