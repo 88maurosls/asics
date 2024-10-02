@@ -1,30 +1,6 @@
 import streamlit as st
 import pandas as pd
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
 import io
-
-# Funzione per autenticarsi e aprire il Google Sheet
-def connect_to_google_sheet():
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
-    client = gspread.authorize(creds)
-    # Apri il Google Sheet con il link che hai fornito
-    sheet = client.open_by_url('https://docs.google.com/spreadsheets/d/17g287VcrlbQfO9u6cmySRR8sAzzMUV2hjWe_aSYr3x8/edit?usp=sharing')
-    return sheet
-
-# Funzione per scrivere i dati di genere nel Google Sheet
-def update_google_sheet(gender_dict):
-    try:
-        sheet = connect_to_google_sheet()
-        worksheet = sheet.get_worksheet(0)  # Primo foglio nel documento
-        
-        # Aggiorna il foglio con i dati di genere
-        for (articolo, colore), flag in gender_dict.items():
-            worksheet.append_row([articolo, colore, flag])  # Aggiungi una nuova riga con i dati
-        st.success("Google Sheet aggiornato correttamente.")
-    except Exception as e:
-        st.error(f"Errore durante l'aggiornamento del Google Sheet: {e}")
 
 # Funzione per formattare la colonna Taglia
 def format_taglia(size_us):
@@ -101,9 +77,6 @@ if uploaded_files:
         # Filtra i dati in base alla selezione UOMO/DONNA
         uomo_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UOMO', axis=1)]
         donna_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'DONNA', axis=1)]
-
-        # Aggiorna il Google Sheet con i dati di genere
-        update_google_sheet(selections)
 
         # Crea un file in memoria per il download
         output = io.BytesIO()
