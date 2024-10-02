@@ -46,7 +46,7 @@ def process_file(file):
     return output_df
 
 # Streamlit app e scrittura del file
-st.title('Upload and Process Multiple Files')
+st.title('Asics Xmag')
 
 # Permetti l'upload di più file
 uploaded_files = st.file_uploader("Choose Excel files", accept_multiple_files=True)
