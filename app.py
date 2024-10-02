@@ -59,25 +59,32 @@ if uploaded_files:
     
     # Concatenate tutti i DataFrame
     final_df = pd.concat(processed_dfs, ignore_index=True)
+
+    # Creare una colonna per il flag "UOMO"/"DONNA"
+    final_df["Flag"] = ""
+
+    st.write("Anteprima dei dati:")
     
-    # Crea un file in memoria per il download
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        final_df.to_excel(writer, index=False)
-        
-        # Imposta la colonna "Barcode" come testo per evitare la notazione scientifica
-        worksheet = writer.sheets['Sheet1']
-        
-        # Crea un formato testo
-        text_format = writer.book.add_format({'num_format': '@'})  # Formato per trattare come testo
-        
-        # Applica il formato di testo alla colonna "Barcode"
-        worksheet.set_column('L:L', 20, text_format)  # Formatta la colonna Barcode come testo
+    # Visualizzare l'anteprima dei dati con opzione per UOMO/DONNA
+    for index, row in final_df.iterrows():
+        flag = st.radio(f"Articolo: {row['Articolo']} - Colore: {row['Colore']}", ('UOMO', 'DONNA'), key=index)
+        final_df.at[index, "Flag"] = flag
     
-    # Fornisci un pulsante per scaricare il file elaborato
-    st.download_button(
-        label="Download Processed Excel",
-        data=output.getvalue(),
-        file_name="processed_file.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+    if st.button("Elabora File"):
+        # Crea un file in memoria per il download
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            final_df.to_excel(writer, index=False)
+            
+            # Imposta la colonna "Barcode" come testo per evitare la notazione scientifica
+            worksheet = writer.sheets['Sheet1']
+            text_format = writer.book.add_format({'num_format': '@'})  # Formato per trattare come testo
+            worksheet.set_column('L:L', 20, text_format)  # Formatta la colonna Barcode come testo
+        
+        # Fornisci un pulsante per scaricare il file elaborato
+        st.download_button(
+            label="Download Processed Excel",
+            data=output.getvalue(),
+            file_name="processed_file.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
