@@ -2,17 +2,14 @@ import streamlit as st
 import pandas as pd
 import io
 
-# Function to process each uploaded file
-def format_taglia(size_us):
-    size_str = str(size_us)
-    if ".0" in size_str:
-        size_str = size_str.replace(".0", "")  # Rimuovi il .0
-    return size_str.replace(".5", "+")  # Converti .5 in +
+def clean_price(price):
+    # Rimuovi il simbolo dell'euro e altri spazi, quindi convertilo in numero float
+    return float(str(price).replace("€", "").replace(",", "").strip())
 
 def process_file(file):
     df = pd.read_excel(file, dtype={'Color code': str})  # Leggi la colonna "Color code" come stringa
     
-    # Create the output DataFrame with the required columns
+    # Crea il DataFrame di output con le colonne richieste
     output_df = pd.DataFrame({
         "Articolo": df["Trading code"],
         "Descrizione": df["Item name"],
@@ -22,8 +19,8 @@ def process_file(file):
         "Base Color": "",
         "Made in": "",
         "Sigla Bimbo": "",
-        "Costo": df["Unit price"],
-        "Retail": df["Unit price"] * 2,
+        "Costo": df["Unit price"].apply(clean_price),  # Pulisci e converti i prezzi in numeri
+        "Retail": df["Unit price"].apply(clean_price) * 2,  # Moltiplica per 2
         "Taglia": df["Size US"].apply(format_taglia),  # Formatta la colonna Taglia
         "Barcode": df["EAN code"],
         "Qta": df["Quantity"],
@@ -39,6 +36,7 @@ def process_file(file):
     })
     
     return output_df
+
 
 
 
