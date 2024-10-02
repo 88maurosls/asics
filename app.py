@@ -4,7 +4,7 @@ import io
 
 # Function to process each uploaded file
 def process_file(file):
-    df = pd.read_excel(file)
+    df = pd.read_excel(file, dtype={'Color code': str})  # Leggi la colonna "Color code" come stringa
     
     # Create the output DataFrame with the required columns
     output_df = pd.DataFrame({
@@ -12,7 +12,7 @@ def process_file(file):
         "Descrizione": df["Item name"],
         "Categoria": "CALZATURE",
         "Subcategoria": "Sneakers",
-        "Colore": df["Color code"],
+        "Colore": df["Color code"].apply(lambda x: x.zfill(3)),  # Mantieni gli zeri iniziali
         "Base Color": "",
         "Made in": "",
         "Sigla Bimbo": "",
@@ -33,6 +33,7 @@ def process_file(file):
     })
     
     return output_df
+
 
 # Streamlit app starts here
 st.title('Upload and Process Multiple Files')
