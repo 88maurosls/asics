@@ -15,14 +15,20 @@ def clean_price(price):
     return float(str(price).replace("€", "").replace(",", "").strip())
 
 # Funzione per leggere il file gender.txt e creare un dizionario di flag
+# Funzione per leggere il file gender.txt e creare un dizionario di flag
 def load_gender_data():
     gender_dict = {}
     if os.path.exists('gender.txt'):
         with open('gender.txt', 'r') as f:
             for line in f:
-                articolo, colore, flag = line.strip().split(',')
-                gender_dict[(articolo, colore)] = flag
+                parts = line.strip().split(',')
+                if len(parts) == 3:  # Verifica che la riga contenga esattamente 3 elementi
+                    articolo, colore, flag = parts
+                    gender_dict[(articolo, colore)] = flag
+                else:
+                    st.warning(f"Riga non valida in gender.txt: {line.strip()}")
     return gender_dict
+
 
 # Funzione per salvare i flag selezionati in gender.txt
 def save_gender_data(gender_dict):
