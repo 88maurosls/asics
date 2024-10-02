@@ -28,9 +28,13 @@ def load_gender_data():
 
 # Funzione per salvare i flag selezionati in gender.txt
 def save_gender_data(gender_dict):
-    with open('gender.txt', 'w') as f:
-        for (articolo, colore), flag in gender_dict.items():
-            f.write(f"{articolo},{colore},{flag}\n")
+    try:
+        with open('gender.txt', 'w') as f:
+            for (articolo, colore), flag in gender_dict.items():
+                f.write(f"{articolo},{colore},{flag}\n")
+        st.success("Dati salvati correttamente in gender.txt")
+    except Exception as e:
+        st.error(f"Errore durante il salvataggio: {e}")
 
 # Funzione per elaborare ogni file caricato
 def process_file(file):
@@ -104,7 +108,7 @@ if uploaded_files:
 
         # Salva i dati di genere aggiornati in gender.txt
         gender_data.update(selections)
-        save_gender_data(gender_data)
+        save_gender_data(gender_data)  # Salva le nuove selezioni nel file gender.txt
 
         # Crea un file in memoria per il download
         output = io.BytesIO()
