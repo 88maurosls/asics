@@ -15,7 +15,7 @@ def clean_price(price):
 
 # Funzione per elaborare ogni file caricato
 def process_file(file):
-    df = pd.read_excel(file, dtype={'Color code': str})  # Leggi la colonna "Color code" come stringa
+    df = pd.read_excel(file, dtype={'Color code': str, 'EAN code': str})  # Leggi "Color code" e "EAN code" come stringhe
     
     # Crea il DataFrame di output con le colonne richieste
     output_df = pd.DataFrame({
@@ -30,7 +30,7 @@ def process_file(file):
         "Costo": df["Unit price"].apply(clean_price),  # Pulisci e converti i prezzi in numeri
         "Retail": df["Unit price"].apply(clean_price) * 2,  # Moltiplica per 2
         "Taglia": df["Size US"].apply(format_taglia),  # Formatta la colonna Taglia
-        "Barcode": df["EAN code"],
+        "Barcode": df["EAN code"],  # Tratta il barcode come stringa
         "Qta": df["Quantity"],
         "Tot Costo": "",
         "Materiale": "",
@@ -45,26 +45,29 @@ def process_file(file):
     
     return output_df
 
-# App Streamlit inizia qui
+# Streamlit app e scrittura del file
 st.title('Upload and Process Multiple Files')
 
-# Permetti all'utente di caricare più file
+# Permetti l'upload di più file
 uploaded_files = st.file_uploader("Choose Excel files", accept_multiple_files=True)
 
 if uploaded_files:
-    # Lista per memorizzare tutti i DataFrame elaborati
     processed_dfs = []
     
     for uploaded_file in uploaded_files:
         processed_dfs.append(process_file(uploaded_file))
     
-    # Concatenate tutti i DataFrame elaborati
+    # Concatenate tutti i DataFrame
     final_df = pd.concat(processed_dfs, ignore_index=True)
     
     # Crea un file in memoria per il download
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         final_df.to_excel(writer, index=False)
+        
+        # Imposta la colonna "Barcode" come testo per evitare la notazione scientifica
+        worksheet = writer.sheets['Sheet1']
+        worksheet.set_column('L:L', 20, {'num_format': '@'})  # Colonna "Barcode"
     
     # Fornisci un pulsante per scaricare il file elaborato
     st.download_button(
