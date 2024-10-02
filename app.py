@@ -4,7 +4,7 @@ import io
 import requests  # Per fare le richieste HTTP
 
 # URL del tuo Google Apps Script
-google_apps_script_url = "https://script.google.com/macros/library/d/13WLNJcyL2ELslm49QCZYx3KCso2d-25gv2LVcwnRCgiWOEtI_SDimmo5/1"
+google_apps_script_url = "https://script.google.com/macros/s/AKfycbxy1GqDvR9rv8_xJrU1q6Typne4V7llv27cdpmuBMuDQ6xJWl4_q0FUwBjh5Rs8yHpQtw/exec"
 
 # Funzione per formattare la colonna Taglia
 def format_taglia(size_us):
