@@ -1,10 +1,6 @@
 import streamlit as st
 import pandas as pd
 import io
-import requests  # Per fare le richieste HTTP
-
-# URL del tuo Google Apps Script
-google_apps_script_url = "https://script.google.com/macros/s/AKfycbzRfRqgwoFlCrwrPjzDu2T5up5TH8Nb9M_Nc2EqYuNycnd811sDSzuSsxrkQdtKOnfI/exec"
 
 # Funzione per formattare la colonna Taglia
 def format_taglia(size_us):
@@ -21,6 +17,7 @@ def clean_price(price):
 def process_file(file):
     df = pd.read_excel(file, dtype={'Color code': str, 'EAN code': str})  # Leggi "Color code" e "EAN code" come stringhe
     
+    # Crea il DataFrame di output con le colonne richieste
     output_df = pd.DataFrame({
         "Articolo": df["Trading code"],
         "Descrizione": df["Item name"],
@@ -77,54 +74,28 @@ if uploaded_files:
         selections[(row['Articolo'], row['Colore'])] = flag
 
     if st.button("Elabora File"):
-        success = True
-        # Invia i dati di gender al Google Sheet tramite una richiesta POST
-        for (articolo, colore), gender in selections.items():
-            data = {
-                "articolo": articolo,
-                "colore": colore,
-                "gender": gender
-            }
-            try:
-                response = requests.post(google_apps_script_url, json=data)
+        # Filtra i dati in base alla selezione UOMO/DONNA
+        uomo_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UOMO', axis=1)]
+        donna_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'DONNA', axis=1)]
 
-                # Stampa la risposta completa e verifica il successo
-                st.write(f"Risposta per {articolo} - {colore}: {response.text}")
+        # Crea un file in memoria per il download
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            # Scrivi i dati in due fogli separati
+            uomo_df.to_excel(writer, sheet_name='UOMO', index=False)
+            donna_df.to_excel(writer, sheet_name='DONNA', index=False)
+            
+            # Imposta la colonna "Barcode" come testo per evitare la notazione scientifica
+            worksheet_uomo = writer.sheets['UOMO']
+            worksheet_donna = writer.sheets['DONNA']
+            text_format = writer.book.add_format({'num_format': '@'})  # Formato per trattare come testo
+            worksheet_uomo.set_column('L:L', 20, text_format)  # Formatta la colonna Barcode come testo
+            worksheet_donna.set_column('L:L', 20, text_format)  # Formatta la colonna Barcode come testo
 
-                if response.status_code != 200:
-                    st.error(f"Errore nell'invio di {articolo} - {colore}")
-                    success = False
-                else:
-                    st.success(f"Inviato: {articolo} - {colore} - {gender}")
-            except Exception as e:
-                st.error(f"Errore durante l'invio di {articolo} - {colore}: {e}")
-                success = False
-
-        if success:
-            # Filtra i dati in base alla selezione UOMO/DONNA
-            uomo_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UOMO', axis=1)]
-            donna_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'DONNA', axis=1)]
-
-            # Crea un file in memoria per il download
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                # Scrivi i dati in due fogli separati
-                uomo_df.to_excel(writer, sheet_name='UOMO', index=False)
-                donna_df.to_excel(writer, sheet_name='DONNA', index=False)
-                
-                # Imposta la colonna "Barcode" come testo per evitare la notazione scientifica
-                worksheet_uomo = writer.sheets['UOMO']
-                worksheet_donna = writer.sheets['DONNA']
-                text_format = writer.book.add_format({'num_format': '@'})  # Formato per trattare come testo
-                worksheet_uomo.set_column('L:L', 20, text_format)  # Formatta la colonna Barcode come testo
-                worksheet_donna.set_column('L:L', 20, text_format)  # Formatta la colonna Barcode come testo
-
-            # Fornisci un pulsante per scaricare il file elaborato
-            st.download_button(
-                label="Download Processed Excel",
-                data=output.getvalue(),
-                file_name="processed_file.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-        else:
-            st.error("Si è verificato un errore nell'elaborazione dei file.")
+        # Fornisci un pulsante per scaricare il file elaborato
+        st.download_button(
+            label="Download Processed Excel",
+            data=output.getvalue(),
+            file_name="processed_file.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
