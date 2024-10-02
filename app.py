@@ -29,6 +29,11 @@ def load_gender_data():
 # Funzione per salvare i flag selezionati in gender.txt
 def save_gender_data(gender_dict):
     try:
+        # Mostra la directory corrente per il debug
+        current_directory = os.getcwd()
+        st.write(f"Directory corrente: {current_directory}")
+        
+        # Assicuriamoci di salvare correttamente in gender.txt nella directory corrente
         with open('gender.txt', 'w') as f:
             for (articolo, colore), flag in gender_dict.items():
                 f.write(f"{articolo},{colore},{flag}\n")
