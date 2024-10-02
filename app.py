@@ -67,7 +67,10 @@ if uploaded_files:
         
         # Imposta la colonna "Barcode" come testo per evitare la notazione scientifica
         worksheet = writer.sheets['Sheet1']
-        worksheet.set_column('L:L', 20, {'num_format': '@'})  # Colonna "Barcode"
+        worksheet.set_column('L:L', 20, None)  # Estendi la larghezza della colonna per il Barcode
+        for idx, col in enumerate(final_df):  # Itera sulle colonne per trovare quella del "Barcode"
+            if col == "Barcode":
+                worksheet.set_column(idx, idx, 20, {'num_format': '@'})  # Formatta come testo la colonna Barcode
     
     # Fornisci un pulsante per scaricare il file elaborato
     st.download_button(
