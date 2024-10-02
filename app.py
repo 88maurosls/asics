@@ -63,30 +63,35 @@ if uploaded_files:
     # Seleziona solo le combinazioni uniche di "Articolo" e "Colore"
     unique_combinations = final_df[["Articolo", "Colore"]].drop_duplicates()
 
-    # Creare una colonna per il flag "UOMO"/"DONNA"
-    unique_combinations["Flag"] = ""
-
     st.write("Anteprima delle combinazioni uniche di Articolo e Colore:")
+
+    # Dizionario per raccogliere il flag UOMO/DONNA per ogni combinazione
+    selections = {}
 
     # Visualizzare l'anteprima dei dati unici con opzione per UOMO/DONNA
     for index, row in unique_combinations.iterrows():
         flag = st.radio(f"Articolo: {row['Articolo']} - Colore: {row['Colore']}", ('UOMO', 'DONNA'), key=index)
-        unique_combinations.at[index, "Flag"] = flag
+        selections[(row['Articolo'], row['Colore'])] = flag
 
     if st.button("Elabora File"):
-        # Uniamo il flag UOMO/DONNA con il DataFrame originale
-        final_df = final_df.merge(unique_combinations, on=["Articolo", "Colore"], how="left")
+        # Filtra i dati in base alla selezione UOMO/DONNA
+        uomo_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UOMO', axis=1)]
+        donna_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'DONNA', axis=1)]
 
         # Crea un file in memoria per il download
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            final_df.to_excel(writer, index=False)
+            # Scrivi i dati in due fogli separati
+            uomo_df.to_excel(writer, sheet_name='UOMO', index=False)
+            donna_df.to_excel(writer, sheet_name='DONNA', index=False)
             
             # Imposta la colonna "Barcode" come testo per evitare la notazione scientifica
-            worksheet = writer.sheets['Sheet1']
+            worksheet_uomo = writer.sheets['UOMO']
+            worksheet_donna = writer.sheets['DONNA']
             text_format = writer.book.add_format({'num_format': '@'})  # Formato per trattare come testo
-            worksheet.set_column('L:L', 20, text_format)  # Formatta la colonna Barcode come testo
-        
+            worksheet_uomo.set_column('L:L', 20, text_format)  # Formatta la colonna Barcode come testo
+            worksheet_donna.set_column('L:L', 20, text_format)  # Formatta la colonna Barcode come testo
+
         # Fornisci un pulsante per scaricare il file elaborato
         st.download_button(
             label="Download Processed Excel",
