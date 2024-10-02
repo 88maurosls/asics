@@ -60,17 +60,23 @@ if uploaded_files:
     # Concatenate tutti i DataFrame
     final_df = pd.concat(processed_dfs, ignore_index=True)
 
-    # Creare una colonna per il flag "UOMO"/"DONNA"
-    final_df["Flag"] = ""
+    # Seleziona solo le combinazioni uniche di "Articolo" e "Colore"
+    unique_combinations = final_df[["Articolo", "Colore"]].drop_duplicates()
 
-    st.write("Anteprima dei dati:")
-    
-    # Visualizzare l'anteprima dei dati con opzione per UOMO/DONNA
-    for index, row in final_df.iterrows():
+    # Creare una colonna per il flag "UOMO"/"DONNA"
+    unique_combinations["Flag"] = ""
+
+    st.write("Anteprima delle combinazioni uniche di Articolo e Colore:")
+
+    # Visualizzare l'anteprima dei dati unici con opzione per UOMO/DONNA
+    for index, row in unique_combinations.iterrows():
         flag = st.radio(f"Articolo: {row['Articolo']} - Colore: {row['Colore']}", ('UOMO', 'DONNA'), key=index)
-        final_df.at[index, "Flag"] = flag
-    
+        unique_combinations.at[index, "Flag"] = flag
+
     if st.button("Elabora File"):
+        # Uniamo il flag UOMO/DONNA con il DataFrame originale
+        final_df = final_df.merge(unique_combinations, on=["Articolo", "Colore"], how="left")
+
         # Crea un file in memoria per il download
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
