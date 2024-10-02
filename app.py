@@ -2,49 +2,27 @@ import streamlit as st
 import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
+import io
 
-# Funzione per autenticarsi e aprire il Google Sheet con chiave e email
+# Funzione per autenticarsi e aprire il Google Sheet
 def connect_to_google_sheet():
-    try:
-        # Imposta lo scope per le API di Google Sheets e Google Drive
-        scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-
-        # Utilizza la chiave e l'email che hai fornito
-        creds = {
-            "type": "service_account",
-            "project_id": "innate-entry-434509",
-            "private_key_id": "591e247304cab81eb4feebec07d0903bd5f05fcc",  # La tua chiave privata
-            "private_key": """-----BEGIN PRIVATE KEY-----\n<INSERISCI QUI LA CHIAVE>\n-----END PRIVATE KEY-----\n""",  # Sostituisci con la tua chiave privata
-            "client_email": "marcatempo@innate-entry-434509-r0.iam.gserviceaccount.com",
-            "client_id": "<INSERISCI QUI IL CLIENT ID>",
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token",
-            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-            "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/marcatempo%40innate-entry-434509-r0.iam.gserviceaccount.com"
-        }
-
-        # Usa la chiave e l'email per autorizzare l'accesso al Google Sheet
-        client = gspread.service_account_from_dict(creds, scopes=scope)
-        # Apri il Google Sheet tramite il link
-        sheet = client.open_by_url('https://docs.google.com/spreadsheets/d/17g287VcrlbQfO9u6cmySRR8sAzzMUV2hjWe_aSYr3x8/edit?usp=sharing')
-        return sheet
-    except Exception as e:
-        st.error(f"Errore durante la connessione al Google Sheet: {e}")
-        return None
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_name('credentials.json', scope)
+    client = gspread.authorize(creds)
+    # Apri il Google Sheet con il link che hai fornito
+    sheet = client.open_by_url('https://docs.google.com/spreadsheets/d/17g287VcrlbQfO9u6cmySRR8sAzzMUV2hjWe_aSYr3x8/edit?usp=sharing')
+    return sheet
 
 # Funzione per scrivere i dati di genere nel Google Sheet
 def update_google_sheet(gender_dict):
     try:
         sheet = connect_to_google_sheet()
-        if sheet:
-            worksheet = sheet.get_worksheet(0)  # Primo foglio nel documento
-
-            # Aggiorna il foglio con i dati di genere
-            for (articolo, colore), flag in gender_dict.items():
-                worksheet.append_row([articolo, colore, flag])  # Aggiungi una nuova riga con i dati
-            st.success("Google Sheet aggiornato correttamente.")
-        else:
-            st.error("Impossibile connettersi al Google Sheet.")
+        worksheet = sheet.get_worksheet(0)  # Primo foglio nel documento
+        
+        # Aggiorna il foglio con i dati di genere
+        for (articolo, colore), flag in gender_dict.items():
+            worksheet.append_row([articolo, colore, flag])  # Aggiungi una nuova riga con i dati
+        st.success("Google Sheet aggiornato correttamente.")
     except Exception as e:
         st.error(f"Errore durante l'aggiornamento del Google Sheet: {e}")
 
