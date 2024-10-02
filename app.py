@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import io
+import os
 
 # Funzione per formattare la colonna Taglia
 def format_taglia(size_us):
@@ -12,6 +13,22 @@ def format_taglia(size_us):
 # Funzione per pulire i prezzi (rimuovi simbolo dell'euro e converti in float)
 def clean_price(price):
     return float(str(price).replace("€", "").replace(",", "").strip())
+
+# Funzione per leggere il file gender.txt e creare un dizionario di flag
+def load_gender_data():
+    gender_dict = {}
+    if os.path.exists('gender.txt'):
+        with open('gender.txt', 'r') as f:
+            for line in f:
+                articolo, colore, flag = line.strip().split(',')
+                gender_dict[(articolo, colore)] = flag
+    return gender_dict
+
+# Funzione per salvare i flag selezionati in gender.txt
+def save_gender_data(gender_dict):
+    with open('gender.txt', 'w') as f:
+        for (articolo, colore), flag in gender_dict.items():
+            f.write(f"{articolo},{colore},{flag}\n")
 
 # Funzione per elaborare ogni file caricato
 def process_file(file):
@@ -51,6 +68,9 @@ st.title('Upload and Process Multiple Files')
 # Permetti l'upload di più file
 uploaded_files = st.file_uploader("Choose Excel files", accept_multiple_files=True)
 
+# Carica i dati di genere esistenti da gender.txt
+gender_data = load_gender_data()
+
 if uploaded_files:
     processed_dfs = []
     
@@ -70,13 +90,19 @@ if uploaded_files:
 
     # Visualizzare l'anteprima dei dati unici con opzione per UOMO/DONNA
     for index, row in unique_combinations.iterrows():
-        flag = st.radio(f"Articolo: {row['Articolo']} - Colore: {row['Colore']}", ('UOMO', 'DONNA'), key=index)
+        # Se la combinazione è già presente in gender.txt, seleziona automaticamente il flag
+        default_flag = gender_data.get((row['Articolo'], row['Colore']), 'UOMO')
+        flag = st.radio(f"Articolo: {row['Articolo']} - Colore: {row['Colore']}", ('UOMO', 'DONNA'), index=default_flag == 'DONNA')
         selections[(row['Articolo'], row['Colore'])] = flag
 
     if st.button("Elabora File"):
         # Filtra i dati in base alla selezione UOMO/DONNA
         uomo_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UOMO', axis=1)]
         donna_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'DONNA', axis=1)]
+
+        # Salva i dati di genere aggiornati in gender.txt
+        gender_data.update(selections)
+        save_gender_data(gender_data)
 
         # Crea un file in memoria per il download
         output = io.BytesIO()
