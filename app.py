@@ -70,7 +70,7 @@ if uploaded_files:
 
     # Visualizzare l'anteprima dei dati unici con opzione per UOMO/DONNA
     for index, row in unique_combinations.iterrows():
-        flag = st.radio(f"{row['Articolo']}-{row['Colore']}", ('', 'UOMO', 'DONNA'), key=index)  # Aggiungi un'opzione vuota
+        flag = st.radio(f"{row['Articolo']}-{row['Colore']}", ('UOMO', 'DONNA'), key=index)  # Solo UOMO e DONNA
         selections[(row['Articolo'], row['Colore'])] = flag
 
     if st.button("Elabora File"):
