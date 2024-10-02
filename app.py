@@ -1,6 +1,10 @@
 import streamlit as st
 import pandas as pd
 import io
+import requests  # Per fare le richieste HTTP
+
+# URL del tuo Google Apps Script
+google_apps_script_url = "https://script.google.com/macros/s/AKfycbxy1GqDvR9rv8_xJrU1q6Typne4V7llv27cdpmuBMuDQ6xJWl4_q0FUwBjh5Rs8yHpQtw/exec"
 
 # Funzione per formattare la colonna Taglia
 def format_taglia(size_us):
@@ -17,7 +21,6 @@ def clean_price(price):
 def process_file(file):
     df = pd.read_excel(file, dtype={'Color code': str, 'EAN code': str})  # Leggi "Color code" e "EAN code" come stringhe
     
-    # Crea il DataFrame di output con le colonne richieste
     output_df = pd.DataFrame({
         "Articolo": df["Trading code"],
         "Descrizione": df["Item name"],
@@ -74,6 +77,19 @@ if uploaded_files:
         selections[(row['Articolo'], row['Colore'])] = flag
 
     if st.button("Elabora File"):
+        # Invia i dati di gender al Google Sheet tramite una richiesta POST
+        for (articolo, colore), gender in selections.items():
+            data = {
+                "articolo": articolo,
+                "colore": colore,
+                "gender": gender
+            }
+            response = requests.post(google_apps_script_url, json=data)
+            if response.status_code == 200:
+                st.success(f"Inviato: {articolo} - {colore} - {gender}")
+            else:
+                st.error(f"Errore nell'invio di {articolo} - {colore}")
+
         # Filtra i dati in base alla selezione UOMO/DONNA
         uomo_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UOMO', axis=1)]
         donna_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'DONNA', axis=1)]
