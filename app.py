@@ -86,12 +86,15 @@ def write_data_in_chunks(writer, df, stagione, data_inizio, data_fine, ricarico)
     for i in range(num_chunks):
         chunk_df = df[i*50:(i+1)*50]  # Estrai un blocco di massimo 50 righe
 
-        # Scrivi i dati del DataFrame senza specificare sheet_name
+        # Utilizza nomi di fogli standard (Foglio1, Foglio2, ecc.)
+        sheet_name = f"Foglio{i+1}"
+
+        # Scrivi i dati del DataFrame
         start_row = 9  # Riga in cui iniziano i dati (10 per l'utente)
-        chunk_df.to_excel(writer, startrow=start_row, index=False)
+        chunk_df.to_excel(writer, sheet_name=sheet_name, startrow=start_row, index=False)
 
         # Recupera l'oggetto del foglio corrente
-        worksheet = writer.book.get_worksheet_by_name(writer.sheets.keys()[i])
+        worksheet = writer.sheets[sheet_name]
 
         # Scrivi l'intestazione fissa nelle prime righe
         worksheet.write('A1', 'STAGIONE:')
