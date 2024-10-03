@@ -133,7 +133,7 @@ st.markdown('**[Scarica le Packing List da qui](https://b2b.asics.com/orders-ove
 colors_mapping = load_colors_mapping("color.txt")
 
 # Permetti l'upload di più file Excel
-uploaded_files = st.file_uploader("Scegli i file Excel", accept_multiple_files=True)
+uploaded_files = st.file_uploader("Carica le PAcking List", accept_multiple_files=True)
 
 if uploaded_files and stagione and data_inizio and data_fine and ricarico:
     ricarico = float(ricarico)  # Converte RICARICO in float
