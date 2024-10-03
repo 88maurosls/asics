@@ -127,7 +127,7 @@ data_fine = st.date_input("Inserisci DATA FINE")
 ricarico = st.text_input("Inserisci RICARICO", value="2")  # Imposta 2 come valore predefinito
 
 # Aggiungi il contenuto testuale con il link
-st.markdown('**[Scarica le Packing List "Delivery Note No." da qui](https://b2b.asics.com/orders-overview/order-history)**')
+st.markdown('**[Scarica le Packing List da qui](https://b2b.asics.com/orders-overview/order-history)**')
 
 # Carica il file color.txt dalla directory del progetto
 colors_mapping = load_colors_mapping("color.txt")
@@ -151,18 +151,22 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
     selections = {}
 
     for index, row in unique_combinations.iterrows():
-        flag = st.selectbox(f"{row['Articolo']}-{row['Colore']}", options=["Seleziona...", "UOMO", "DONNA"], key=index)
+        # Aggiungi l'opzione "UNISEX" al selectbox
+        flag = st.selectbox(f"{row['Articolo']}-{row['Colore']}", options=["Seleziona...", "UOMO", "DONNA", "UNISEX"], key=index)
         selections[(row['Articolo'], row['Colore'])] = flag
 
     if st.button("Elabora File"):
         if any(flag == "Seleziona..." for flag in selections.values()):
-            st.error("Devi selezionare UOMO o DONNA per tutte le combinazioni!")
+            st.error("Devi selezionare UOMO, DONNA o UNISEX per tutte le combinazioni!")
         else:
+            # Filtra per UOMO, DONNA e UNISEX
             uomo_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UOMO', axis=1)]
             donna_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'DONNA', axis=1)]
+            unisex_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UNISEX', axis=1)]
 
             uomo_output = io.BytesIO()
             donna_output = io.BytesIO()
+            unisex_output = io.BytesIO()
 
             if not uomo_df.empty:
                 with pd.ExcelWriter(uomo_output, engine='xlsxwriter') as writer_uomo:
@@ -181,5 +185,15 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
                     label="Download File DONNA",
                     data=donna_output.getvalue(),
                     file_name="donna_processed_file.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+            
+            if not unisex_df.empty:
+                with pd.ExcelWriter(unisex_output, engine='xlsxwriter') as writer_unisex:
+                    write_data_in_chunks(writer_unisex, unisex_df, stagione, data_inizio, data_fine, ricarico)
+                st.download_button(
+                    label="Download File UNISEX",
+                    data=unisex_output.getvalue(),
+                    file_name="unisex_processed_file.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
