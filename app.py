@@ -113,7 +113,7 @@ if uploaded_files:
     # Seleziona solo le combinazioni uniche di "Articolo" e "Colore"
     unique_combinations = final_df[["Articolo", "Colore"]].drop_duplicates()
 
-    st.write("Anteprima delle combinazioni uniche di Articolo e Colore:")
+    st.write("Anteprima Articolo-Colore:")
 
     # Dizionario per raccogliere il flag UOMO/DONNA per ogni combinazione
     selections = {}
