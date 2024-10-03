@@ -122,7 +122,6 @@ def write_data_in_chunks(writer, df, stagione, data_inizio, data_fine, ricarico)
 
 # Funzione per connettersi a Google Sheets
 def connect_to_gsheet():
-    # Usa i segreti in formato TOML salvati su Streamlit (modifica la sezione da gcp_service_account a gsheet)
     credentials = {
         "type": st.secrets["gsheet"]["type"],
         "project_id": st.secrets["gsheet"]["project_id"],
@@ -141,11 +140,22 @@ def connect_to_gsheet():
     client = gspread.authorize(creds)
     return client
 
-# Funzione per scrivere dati su Google Sheets
+# Funzione per recuperare i dati "Articolo", "Colore" e "Gender" dal foglio "Gender"
+def get_gender_from_gsheet(sheet_url):
+    client = connect_to_gsheet()
+    sheet = client.open_by_url(sheet_url)
+    worksheet = sheet.worksheet("Gender")
+    
+    # Recupera tutti i valori dal foglio
+    data = worksheet.get_all_values()
+
+    # Creare un dizionario {(Articolo, Colore): Gender}
+    gender_dict = {(row[0], row[1]): row[2] for row in data[1:]}  # Ignora l'intestazione
+    return gender_dict
+
 # Funzione per scrivere dati su Google Sheets nel foglio specificato
 def write_to_gsheet(data, sheet_url):
     client = connect_to_gsheet()
-    # Apri il Google Sheet con l'URL fornito
     sheet = client.open_by_url(sheet_url)
     
     # Seleziona il foglio chiamato "Gender"
@@ -160,7 +170,6 @@ def write_to_gsheet(data, sheet_url):
     # Scrivi i dati in un range (A, B, C per Articolo, Colore e Gender)
     cell_range = f'A{next_row}:C{next_row + len(rows) - 1}'
     worksheet.update(cell_range, rows)
-
 
 
 # Streamlit app
@@ -192,13 +201,21 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
 
     unique_combinations = final_df[["Articolo", "Colore"]].drop_duplicates()
 
+    # Recupera il genere già presente nel foglio "Gender"
+    google_sheet_url = "https://docs.google.com/spreadsheets/d/1p84nF9Tq-1ZJgQSEJcgrePLvQyGQ3cjt_1IZP5qPs00/edit?usp=sharing"
+    gender_dict = get_gender_from_gsheet(google_sheet_url)
+
     st.write("Anteprima Articolo-Colore:")
 
     selections = {}
 
     for index, row in unique_combinations.iterrows():
-        # Aggiungi l'opzione "UNISEX" al selectbox
-        flag = st.selectbox(f"{row['Articolo']}-{row['Colore']}", options=["Seleziona...", "UOMO", "DONNA", "UNISEX"], key=index)
+        articolo_colore = (row['Articolo'], row['Colore'])
+        
+        # Se il genere è già presente in Google Sheet, usalo, altrimenti usa "Seleziona..."
+        preselected_gender = gender_dict.get(articolo_colore, "Seleziona...")
+        
+        flag = st.selectbox(f"{row['Articolo']}-{row['Colore']}", options=["Seleziona...", "UOMO", "DONNA", "UNISEX"], key=index, index=["Seleziona...", "UOMO", "DONNA", "UNISEX"].index(preselected_gender))
         selections[(row['Articolo'], row['Colore'])] = flag
 
     if st.button("Elabora File"):
@@ -209,7 +226,6 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
             gsheet_data = [(row['Articolo'], row['Colore'], selections[(row['Articolo'], row['Colore'])]) for index, row in unique_combinations.iterrows()]
             
             # Scrivi i dati nel Google Sheet
-            google_sheet_url = "https://docs.google.com/spreadsheets/d/1p84nF9Tq-1ZJgQSEJcgrePLvQyGQ3cjt_1IZP5qPs00/edit?usp=sharing"
             write_to_gsheet(gsheet_data, google_sheet_url)
 
             st.success("Dati scritti con successo su Google Sheet!")
