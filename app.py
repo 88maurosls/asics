@@ -45,7 +45,7 @@ def get_base_color(color_name, colors_mapping):
     return ""  # Se non trovi corrispondenza, lascia vuoto
 
 # Funzione per elaborare ogni file caricato
-def process_file(file, colors_mapping):
+def process_file(file, colors_mapping, ricarico):
     df = pd.read_excel(file, dtype={'Color code': str, 'EAN code': str})  # Leggi "Color code" e "EAN code" come stringhe
     
     # Crea il DataFrame di output con le colonne richieste
@@ -59,12 +59,12 @@ def process_file(file, colors_mapping):
         "Made in": "",
         "Sigla Bimbo": "",
         "Costo": df["Unit price"].apply(clean_price),  # Pulisci e converti i prezzi in numeri
-        "Retail": df["Unit price"].apply(clean_price) * 2,  # Moltiplica per 2
+        "Retail": df["Unit price"].apply(clean_price) * ricarico,  # Moltiplica per il valore di RICARICO
         "Taglia": df["Size US"].apply(format_taglia),  # Formatta la colonna Taglia
         "Barcode": df["EAN code"],  # Tratta il barcode come stringa
         "EAN": "",  # Colonna vuota aggiunta subito dopo Barcode
         "Qta": df["Quantity"],
-        "Tot Costo": df["Unit price"].apply(clean_price) * df["Quantity"],  # Calcola Tot Costo come Costo * Qta
+        "Tot Costo": df["Unit price"].apply(clean_price) * df["Quantity"] * ricarico,  # Calcola Tot Costo come Costo * Qta * Ricarico
         "Materiale": "",
         "Spec. Materiale": "",
         "Misure": "",
@@ -89,7 +89,7 @@ def write_data_in_chunks(writer, df, stagione, data_inizio, data_fine, ricarico)
         # Utilizza nomi di fogli standard (Foglio1, Foglio2, ecc.)
         sheet_name = f"Foglio{i+1}"
 
-        # Scrivi i dati del DataFrame nel foglio
+        # Scrivi i dati del DataFrame
         start_row = 9  # Riga in cui iniziano i dati (10 per l'utente)
         chunk_df.to_excel(writer, sheet_name=sheet_name, startrow=start_row, index=False)
 
@@ -105,9 +105,9 @@ def write_data_in_chunks(writer, df, stagione, data_inizio, data_fine, ricarico)
         worksheet.write('A2', 'TIPO:')
         worksheet.write('B2', 'ACCESSORI')  # Inserisci ACCESSORI accanto a TIPO
         worksheet.write('A3', 'DATA INIZIO:')
-        worksheet.write('B3', data_inizio.strftime('%d/%m/%Y'))  # Formatta correttamente la DATA INIZIO
+        worksheet.write('B3', data_inizio.strftime('%d/%m/%Y'))  # Formatta correttamente la DATA INIZIO senza apice
         worksheet.write('A4', 'DATA FINE:')
-        worksheet.write('B4', data_fine.strftime('%d/%m/%Y'))  # Formatta correttamente la DATA FINE
+        worksheet.write('B4', data_fine.strftime('%d/%m/%Y'))  # Formatta correttamente la DATA FINE senza apice
         worksheet.write('A5', 'RICARICO:')
         worksheet.write('B5', ricarico)  # Inserisci il valore di RICARICO
 
@@ -134,7 +134,6 @@ def write_data_in_chunks(writer, df, stagione, data_inizio, data_fine, ricarico)
         worksheet.set_column('O:O', None, number_format)
 
 
-
 # Streamlit app e scrittura del file
 st.title('Asics Xmag')
 
@@ -151,10 +150,11 @@ colors_mapping = load_colors_mapping("color.txt")  # Usa il percorso relativo al
 uploaded_files = st.file_uploader("Scegli i file Excel", accept_multiple_files=True)
 
 if uploaded_files and stagione and data_inizio and data_fine and ricarico:
+    ricarico = float(ricarico)  # Converte RICARICO in float
     processed_dfs = []
     
     for uploaded_file in uploaded_files:
-        processed_dfs.append(process_file(uploaded_file, colors_mapping))
+        processed_dfs.append(process_file(uploaded_file, colors_mapping, ricarico))
     
     # Concatenate tutti i DataFrame
     final_df = pd.concat(processed_dfs, ignore_index=True)
