@@ -5,6 +5,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 
+
 # Funzione per formattare la colonna Taglia
 def format_taglia(size_us):
     size_str = str(size_us)
