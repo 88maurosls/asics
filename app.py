@@ -111,10 +111,13 @@ def write_data_in_chunks(writer, df, sheet_name_base, stagione, data_inizio, dat
         # Trova l'ultima riga dei dati
         last_data_row = len(chunk_df) + start_row
 
-        # Aggiungi la somma subito sotto l'ultima riga dei dati
+        # Lascia una riga vuota
+        total_row = last_data_row + 2
+
+        # Aggiungi la somma subito sotto la riga vuota
         number_format = writer.book.add_format({'num_format': '#,##0.00'})  # Formato numerico con due decimali
-        worksheet.write_formula(f'N{last_data_row + 2}', f"=SUM(N{start_row+1}:N{last_data_row})", number_format)  # Somma per la colonna Qta
-        worksheet.write_formula(f'O{last_data_row + 2}', f"=SUM(O{start_row+1}:O{last_data_row})", number_format)  # Somma per la colonna Tot Costo
+        worksheet.write_formula(f'N{total_row}', f"=SUM(N{start_row+1}:N{last_data_row})", number_format)  # Somma per la colonna Qta
+        worksheet.write_formula(f'O{total_row}', f"=SUM(O{start_row+1}:O{last_data_row})", number_format)  # Somma per la colonna Tot Costo
 
         # Applica la formattazione numerica con due decimali alle colonne Qta e Tot Costo
         worksheet.set_column('N:N', None, number_format)
