@@ -79,19 +79,6 @@ def process_file(file, colors_mapping):
     
     return expanded_df
 
-# Funzione per suddividere i dati in fogli di massimo 50 righe
-def write_data_in_chunks(writer, df, sheet_name_base):
-    num_chunks = len(df) // 50 + (1 if len(df) % 50 > 0 else 0)  # Calcola il numero di fogli necessari
-    for i in range(num_chunks):
-        chunk_df = df[i*50:(i+1)*50]  # Estrai un blocco di massimo 50 righe
-        sheet_name = f"{sheet_name_base}" if i == 0 else f"{sheet_name_base} {i+1}"  # Nome del foglio (UOMO, UOMO 2, etc.)
-        chunk_df.to_excel(writer, sheet_name=sheet_name, index=False)
-        
-        # Imposta la colonna "Barcode" come testo per evitare la notazione scientifica
-        worksheet = writer.sheets[sheet_name]
-        text_format = writer.book.add_format({'num_format': '@'})  # Formato per trattare come testo
-        worksheet.set_column('L:L', 20, text_format)  # Formatta la colonna Barcode come testo
-
 # Streamlit app e scrittura del file
 st.title('Asics Xmag')
 
@@ -132,17 +119,35 @@ if uploaded_files:
             uomo_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UOMO', axis=1)]
             donna_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'DONNA', axis=1)]
 
-            # Crea un file in memoria per il download
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                # Scrivi i dati in blocchi di 50 righe separati in fogli distinti
-                write_data_in_chunks(writer, uomo_df, 'UOMO')
-                write_data_in_chunks(writer, donna_df, 'DONNA')
+            # Crea due file Excel distinti, uno per UOMO e uno per DONNA
+            uomo_output = io.BytesIO()
+            donna_output = io.BytesIO()
 
-            # Fornisci un pulsante per scaricare il file elaborato
+            # Scrivi i dati di UOMO
+            with pd.ExcelWriter(uomo_output, engine='xlsxwriter') as writer_uomo:
+                uomo_df.to_excel(writer_uomo, sheet_name='UOMO', index=False)
+                worksheet_uomo = writer_uomo.sheets['UOMO']
+                text_format = writer_uomo.book.add_format({'num_format': '@'})
+                worksheet_uomo.set_column('L:L', 20, text_format)
+
+            # Scrivi i dati di DONNA
+            with pd.ExcelWriter(donna_output, engine='xlsxwriter') as writer_donna:
+                donna_df.to_excel(writer_donna, sheet_name='DONNA', index=False)
+                worksheet_donna = writer_donna.sheets['DONNA']
+                text_format = writer_donna.book.add_format({'num_format': '@'})
+                worksheet_donna.set_column('L:L', 20, text_format)
+
+            # Fornisci due pulsanti separati per scaricare i file UOMO e DONNA
             st.download_button(
-                label="Download Processed Excel",
-                data=output.getvalue(),
-                file_name="processed_file.xlsx",
+                label="Download File UOMO",
+                data=uomo_output.getvalue(),
+                file_name="uomo_processed_file.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
+            st.download_button(
+                label="Download File DONNA",
+                data=donna_output.getvalue(),
+                file_name="donna_processed_file.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
