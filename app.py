@@ -46,8 +46,12 @@ def get_base_color(color_name, colors_mapping):
     return ""  # Se non trovi corrispondenza, lascia vuoto
 
 # Funzione per elaborare ogni file caricato
+# Funzione per elaborare ogni file caricato
 def process_file(file, colors_mapping, ricarico):
     df = pd.read_excel(file, dtype={'Color code': str, 'EAN code': str})
+
+    # Filtra via le righe dove lo "Status" è "Rejected"
+    df = df[df['Status'] != 'Rejected']
     
     output_df = pd.DataFrame({
         "Articolo": df["Trading code"],
@@ -78,6 +82,7 @@ def process_file(file, colors_mapping, ricarico):
     expanded_df = expand_rows(output_df)
     
     return expanded_df
+
 
 # Funzione per suddividere i dati in fogli di massimo 50 righe e aggiungere l'intestazione
 def write_data_in_chunks(writer, df, stagione, data_inizio, data_fine, ricarico):
