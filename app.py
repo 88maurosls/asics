@@ -80,7 +80,7 @@ def process_file(file, colors_mapping):
     return expanded_df
 
 # Funzione per suddividere i dati in fogli di massimo 50 righe e aggiungere l'intestazione
-def write_data_in_chunks(writer, df, sheet_name_base):
+def write_data_in_chunks(writer, df, sheet_name_base, stagione, data_inizio, data_fine, ricarico):
     num_chunks = len(df) // 50 + (1 if len(df) % 50 > 0 else 0)  # Calcola il numero di fogli necessari
     for i in range(num_chunks):
         chunk_df = df[i*50:(i+1)*50]  # Estrai un blocco di massimo 50 righe
@@ -92,11 +92,15 @@ def write_data_in_chunks(writer, df, sheet_name_base):
         # Scrivi l'intestazione fissa nelle prime righe
         worksheet = writer.sheets[sheet_name]
         worksheet.write('A1', 'STAGIONE:')
+        worksheet.write('B1', stagione)  # Inserisci il valore di STAGIONE
         worksheet.write('A2', 'TIPO:')
         worksheet.write('B2', 'ACCESSORI')  # Inserisci ACCESSORI accanto a TIPO
         worksheet.write('A3', 'DATA INIZIO:')
+        worksheet.write('B3', data_inizio)  # Inserisci il valore di DATA INIZIO
         worksheet.write('A4', 'DATA FINE:')
+        worksheet.write('B4', data_fine)  # Inserisci il valore di DATA FINE
         worksheet.write('A5', 'RICARICO:')
+        worksheet.write('B5', ricarico)  # Inserisci il valore di RICARICO
 
         # Imposta la colonna "Barcode" come testo per evitare la notazione scientifica
         text_format = writer.book.add_format({'num_format': '@'})  # Formato per trattare come testo
@@ -109,13 +113,19 @@ def write_data_in_chunks(writer, df, sheet_name_base):
 # Streamlit app e scrittura del file
 st.title('Asics Xmag')
 
+# Campi di input per l'intestazione
+stagione = st.text_input("Inserisci STAGIONE")
+data_inizio = st.date_input("Inserisci DATA INIZIO")
+data_fine = st.date_input("Inserisci DATA FINE")
+ricarico = st.text_input("Inserisci RICARICO")
+
 # Carica il file color.txt dalla directory del progetto
 colors_mapping = load_colors_mapping("color.txt")  # Usa il percorso relativo alla main folder
 
 # Permetti l'upload di più file Excel
 uploaded_files = st.file_uploader("Scegli i file Excel", accept_multiple_files=True)
 
-if uploaded_files:
+if uploaded_files and stagione and data_inizio and data_fine and ricarico:
     processed_dfs = []
     
     for uploaded_file in uploaded_files:
@@ -152,11 +162,11 @@ if uploaded_files:
 
             # Scrivi i dati di UOMO con la logica di suddivisione in blocchi di 50 righe e aggiungi l'intestazione
             with pd.ExcelWriter(uomo_output, engine='xlsxwriter') as writer_uomo:
-                write_data_in_chunks(writer_uomo, uomo_df, 'UOMO')
+                write_data_in_chunks(writer_uomo, uomo_df, 'UOMO', stagione, data_inizio, data_fine, ricarico)
 
             # Scrivi i dati di DONNA con la logica di suddivisione in blocchi di 50 righe e aggiungi l'intestazione
             with pd.ExcelWriter(donna_output, engine='xlsxwriter') as writer_donna:
-                write_data_in_chunks(writer_donna, donna_df, 'DONNA')
+                write_data_in_chunks(writer_donna, donna_df, 'DONNA', stagione, data_inizio, data_fine, ricarico)
 
             # Fornisci due pulsanti separati per scaricare i file UOMO e DONNA
             st.download_button(
