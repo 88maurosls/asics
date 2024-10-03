@@ -252,9 +252,11 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
             # Dividi i dati per genere
             uomo_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UOMO', axis=1)]
             donna_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'DONNA', axis=1)]
+            unisex_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UNISEX', axis=1)]
 
             uomo_output = io.BytesIO()
             donna_output = io.BytesIO()
+            unisex_output = io.BytesIO()
 
             # Genera file Excel per UOMO
             if not uomo_df.empty:
@@ -278,3 +280,13 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
 
+            # Genera file Excel per UNISEX
+            if not unisex_df.empty:
+                with pd.ExcelWriter(unisex_output, engine='xlsxwriter') as writer_unisex:
+                    write_data_in_chunks(writer_unisex, unisex_df, stagione, data_inizio, data_fine, ricarico)
+                st.download_button(
+                    label="Download File UNISEX",
+                    data=unisex_output.getvalue(),
+                    file_name="unisex_processed_file.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
