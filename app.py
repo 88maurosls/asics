@@ -5,7 +5,6 @@ import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 
-
 # Funzione per formattare la colonna Taglia
 def format_taglia(size_us):
     size_str = str(size_us)
@@ -140,18 +139,18 @@ def connect_to_gsheet():
     client = gspread.authorize(creds)
     return client
 
-# Funzione per controllare se l'articolo e il colore sono già presenti nel foglio
-def check_existing_entries(sheet_url):
+# Funzione per recuperare i dati "Articolo", "Colore" e "Gender" dal foglio "Gender"
+def get_existing_gender(sheet_url):
     client = connect_to_gsheet()
     sheet = client.open_by_url(sheet_url)
     worksheet = sheet.worksheet("Gender")
-
-    # Ottieni tutti i dati dal foglio
+    
+    # Recupera tutti i valori dal foglio
     data = worksheet.get_all_values()
 
-    # Crea un set di tuple per combinazione di (Articolo, Colore)
-    existing_entries = {(row[0], row[1]) for row in data[1:]}  # Ignora l'intestazione
-    return existing_entries
+    # Creare un dizionario {(Articolo, Colore): Gender}
+    gender_dict = {(row[0], row[1]): row[2] for row in data[1:]}  # Ignora l'intestazione
+    return gender_dict
 
 # Funzione per scrivere dati su Google Sheets
 def write_to_gsheet(data, sheet_url):
@@ -163,7 +162,7 @@ def write_to_gsheet(data, sheet_url):
     next_row = len(worksheet.get_all_values()) + 1
 
     # Ottieni le combinazioni già esistenti (Articolo, Colore)
-    existing_entries = check_existing_entries(sheet_url)
+    existing_entries = get_existing_gender(sheet_url)
 
     # Filtra i nuovi dati per evitare duplicati
     new_rows = []
@@ -203,6 +202,10 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
     ricarico = float(ricarico)  # Converte RICARICO in float
     processed_dfs = []
     
+    # Recupera il genere già presente nel foglio "Gender"
+    google_sheet_url = "https://docs.google.com/spreadsheets/d/1p84nF9Tq-1ZJgQSEJcgrePLvQyGQ3cjt_1IZP5qPs00/edit?usp=sharing"
+    gender_dict = get_existing_gender(google_sheet_url)
+    
     for uploaded_file in uploaded_files:
         processed_dfs.append(process_file(uploaded_file, colors_mapping, ricarico))
     
@@ -215,8 +218,12 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
     selections = {}
 
     for index, row in unique_combinations.iterrows():
-        # Aggiungi l'opzione "UNISEX" al selectbox
-        flag = st.selectbox(f"{row['Articolo']}-{row['Colore']}", options=["Seleziona...", "UOMO", "DONNA", "UNISEX"], key=index)
+        articolo_colore = (row['Articolo'], row['Colore'])
+        
+        # Se il genere è già presente in Google Sheet, usalo, altrimenti usa "Seleziona..."
+        preselected_gender = gender_dict.get(articolo_colore, "Seleziona...")
+        
+        flag = st.selectbox(f"{row['Articolo']}-{row['Colore']}", options=["Seleziona...", "UOMO", "DONNA", "UNISEX"], key=index, index=["Seleziona...", "UOMO", "DONNA", "UNISEX"].index(preselected_gender) if preselected_gender in ["UOMO", "DONNA", "UNISEX"] else 0)
         selections[(row['Articolo'], row['Colore'])] = flag
 
     if st.button("Elabora File"):
@@ -227,7 +234,6 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
             gsheet_data = [(row['Articolo'], row['Colore'], selections[(row['Articolo'], row['Colore'])]) for index, row in unique_combinations.iterrows()]
             
             # Scrivi i dati nel Google Sheet
-            google_sheet_url = "https://docs.google.com/spreadsheets/d/1p84nF9Tq-1ZJgQSEJcgrePLvQyGQ3cjt_1IZP5qPs00/edit?usp=sharing"
             write_to_gsheet(gsheet_data, google_sheet_url)
 
             st.success("Dati scritti con successo su Google Sheet!")
