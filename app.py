@@ -108,8 +108,8 @@ def get_existing_gender(sheet_url):
     # Recupera tutti i valori dal foglio
     data = worksheet.get_all_values()
 
-    # Creare un dizionario {(Articolo, Colore): Gender}
-    gender_dict = {(row[0], row[1]): row[2] for row in data[1:]}  # Ignora l'intestazione
+    # Creare un dizionario {"Articolo-Colore": Gender} per compatibilità JSON
+    gender_dict = {f"{row[0]}-{row[1]}": row[2] for row in data[1:]}  # Ignora l'intestazione
     st.write("Dati recuperati dal Google Sheet:", gender_dict)  # Debugging: stampa i dati recuperati
     return gender_dict
 
@@ -128,7 +128,7 @@ def write_to_gsheet(data, sheet_url):
     # Filtra i nuovi dati per evitare duplicati
     new_rows = []
     for (articolo, colore, gender) in data:
-        if (articolo, colore) not in existing_entries:
+        if f"{articolo}-{colore}" not in existing_entries:
             new_rows.append([articolo, colore, gender])
 
     if not new_rows:
@@ -179,7 +179,7 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
     selections = {}
 
     for index, row in unique_combinations.iterrows():
-        articolo_colore = (row['Articolo'], row['Colore'])
+        articolo_colore = f"{row['Articolo']}-{row['Colore']}"  # Chiave come stringa unica
         
         # Se il genere è già presente in Google Sheet, usalo, altrimenti usa "Seleziona..."
         preselected_gender = gender_dict.get(articolo_colore, "Seleziona...")
