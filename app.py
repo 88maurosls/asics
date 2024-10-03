@@ -142,6 +142,7 @@ def connect_to_gsheet():
     return client
 
 # Funzione per scrivere dati su Google Sheets
+# Funzione per scrivere dati su Google Sheets in blocco
 def write_to_gsheet(data, sheet_url):
     client = connect_to_gsheet()
     # Apri il Google Sheet con l'URL fornito
@@ -150,12 +151,14 @@ def write_to_gsheet(data, sheet_url):
     
     # Trova la prima riga vuota
     next_row = len(worksheet.get_all_values()) + 1
-    
-    # Scrivi i dati nella colonna specificata
-    for index, (articolo, colore, gender) in enumerate(data):
-        worksheet.update(f'A{next_row + index}', articolo)  # Colonna per Articolo
-        worksheet.update(f'B{next_row + index}', colore)    # Colonna per Colore
-        worksheet.update(f'C{next_row + index}', gender)    # Colonna per Gender
+
+    # Prepara i dati da scrivere in formato di lista di liste
+    rows = [[articolo, colore, gender] for (articolo, colore, gender) in data]
+
+    # Scrivi i dati in un range
+    cell_range = f'A{next_row}:C{next_row + len(rows) - 1}'
+    worksheet.update(cell_range, rows)
+
 
 # Streamlit app
 st.title('Asics Xmag Lineare')
