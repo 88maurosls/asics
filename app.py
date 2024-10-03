@@ -93,6 +93,7 @@ def write_data_in_chunks(writer, df, sheet_name_base):
         worksheet = writer.sheets[sheet_name]
         worksheet.write('A1', 'STAGIONE:')
         worksheet.write('A2', 'TIPO:')
+        worksheet.write('B2', 'ACCESSORI')  # Inserisci ACCESSORI accanto a TIPO
         worksheet.write('A3', 'DATA INIZIO:')
         worksheet.write('A4', 'DATA FINE:')
         worksheet.write('A5', 'RICARICO:')
