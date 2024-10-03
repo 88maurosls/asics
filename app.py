@@ -127,7 +127,7 @@ data_fine = st.date_input("Inserisci DATA FINE")
 ricarico = st.text_input("Inserisci RICARICO", value="2")  # Imposta 2 come valore predefinito
 
 # Aggiungi il contenuto testuale con il link
-st.markdown('**[Scarica le Packing List "Delivery note no." da qui](https://b2b.asics.com/orders-overview/order-history)**')
+st.markdown('**[Scarica le Packing List "Delivery Note No." da qui](https://b2b.asics.com/orders-overview/order-history)**')
 
 # Carica il file color.txt dalla directory del progetto
 colors_mapping = load_colors_mapping("color.txt")
