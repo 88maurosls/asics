@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import io
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 
 # Funzione per formattare la colonna Taglia
@@ -117,8 +119,45 @@ def write_data_in_chunks(writer, df, stagione, data_inizio, data_fine, ricarico)
         worksheet.set_column('N:N', None, number_format)
         worksheet.set_column('O:O', None, number_format)
 
-# Streamlit app e scrittura del file
-st.title('Asics Xmag Template Lineare v1.2')
+# Funzione per connettersi a Google Sheets
+def connect_to_gsheet():
+    # Usa i segreti in formato TOML salvati su Streamlit
+    credentials = {
+        "type": st.secrets["gcp_service_account"]["type"],
+        "project_id": st.secrets["gcp_service_account"]["project_id"],
+        "private_key_id": st.secrets["gcp_service_account"]["private_key_id"],
+        "private_key": st.secrets["gcp_service_account"]["private_key"],
+        "client_email": st.secrets["gcp_service_account"]["client_email"],
+        "client_id": st.secrets["gcp_service_account"]["client_id"],
+        "auth_uri": st.secrets["gcp_service_account"]["auth_uri"],
+        "token_uri": st.secrets["gcp_service_account"]["token_uri"],
+        "auth_provider_x509_cert_url": st.secrets["gcp_service_account"]["auth_provider_x509_cert_url"],
+        "client_x509_cert_url": st.secrets["gcp_service_account"]["client_x509_cert_url"]
+    }
+
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials, scope)
+    client = gspread.authorize(creds)
+    return client
+
+# Funzione per scrivere dati su Google Sheets
+def write_to_gsheet(data, sheet_url):
+    client = connect_to_gsheet()
+    # Apri il Google Sheet con l'URL fornito
+    sheet = client.open_by_url(sheet_url)
+    worksheet = sheet.get_worksheet(0)  # Seleziona il primo foglio
+    
+    # Trova la prima riga vuota
+    next_row = len(worksheet.get_all_values()) + 1
+    
+    # Scrivi i dati nella colonna specificata
+    for index, (articolo, colore, gender) in enumerate(data):
+        worksheet.update(f'A{next_row + index}', articolo)  # Colonna per Articolo
+        worksheet.update(f'B{next_row + index}', colore)    # Colonna per Colore
+        worksheet.update(f'C{next_row + index}', gender)    # Colonna per Gender
+
+# Streamlit app
+st.title('Asics Xmag Lineare')
 
 # Campi di input per l'intestazione
 stagione = st.text_input("Inserisci STAGIONE")
@@ -133,7 +172,7 @@ st.markdown('**[Scarica le Packing List da qui](https://b2b.asics.com/orders-ove
 colors_mapping = load_colors_mapping("color.txt")
 
 # Permetti l'upload di più file Excel
-uploaded_files = st.file_uploader("Carica le Packing List", accept_multiple_files=True)
+uploaded_files = st.file_uploader("Scegli i file Excel", accept_multiple_files=True)
 
 if uploaded_files and stagione and data_inizio and data_fine and ricarico:
     ricarico = float(ricarico)  # Converte RICARICO in float
@@ -159,41 +198,11 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
         if any(flag == "Seleziona..." for flag in selections.values()):
             st.error("Devi selezionare UOMO, DONNA o UNISEX per tutte le combinazioni!")
         else:
-            # Filtra per UOMO, DONNA e UNISEX
-            uomo_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UOMO', axis=1)]
-            donna_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'DONNA', axis=1)]
-            unisex_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UNISEX', axis=1)]
-
-            uomo_output = io.BytesIO()
-            donna_output = io.BytesIO()
-            unisex_output = io.BytesIO()
-
-            if not uomo_df.empty:
-                with pd.ExcelWriter(uomo_output, engine='xlsxwriter') as writer_uomo:
-                    write_data_in_chunks(writer_uomo, uomo_df, stagione, data_inizio, data_fine, ricarico)
-                st.download_button(
-                    label="Download File UOMO",
-                    data=uomo_output.getvalue(),
-                    file_name="uomo_processed_file.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-
-            if not donna_df.empty:
-                with pd.ExcelWriter(donna_output, engine='xlsxwriter') as writer_donna:
-                    write_data_in_chunks(writer_donna, donna_df, stagione, data_inizio, data_fine, ricarico)
-                st.download_button(
-                    label="Download File DONNA",
-                    data=donna_output.getvalue(),
-                    file_name="donna_processed_file.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+            # Prepara i dati da inviare a Google Sheets
+            gsheet_data = [(row['Articolo'], row['Colore'], selections[(row['Articolo'], row['Colore'])]) for index, row in unique_combinations.iterrows()]
             
-            if not unisex_df.empty:
-                with pd.ExcelWriter(unisex_output, engine='xlsxwriter') as writer_unisex:
-                    write_data_in_chunks(writer_unisex, unisex_df, stagione, data_inizio, data_fine, ricarico)
-                st.download_button(
-                    label="Download File UNISEX",
-                    data=unisex_output.getvalue(),
-                    file_name="unisex_processed_file.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+            # Scrivi i dati nel Google Sheet
+            google_sheet_url = "https://docs.google.com/spreadsheets/d/1p84nF9Tq-1ZJgQSEJcgrePLvQyGQ3cjt_1IZP5qPs00/edit?usp=sharing"
+            write_to_gsheet(gsheet_data, google_sheet_url)
+
+            st.success("Dati scritti con successo su Google Sheet!")
