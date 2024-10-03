@@ -102,9 +102,8 @@ def write_data_in_chunks(writer, df, sheet_name_base):
         worksheet.set_column('L:L', 20, text_format)  # Colonna Barcode come testo
 
         # Aggiungi la somma nelle celle N62 e O62
-        total_rows = len(chunk_df) + 10  # Calcola il numero totale di righe
-        worksheet.write_formula(f'N{total_rows+1}', f"=SUM(N11:N{total_rows})")  # Somma per la colonna Qta
-        worksheet.write_formula(f'O{total_rows+1}', f"=SUM(O11:O{total_rows})")  # Somma per la colonna Tot Costo
+        worksheet.write_formula('N62', f"=SUM(N11:N61)")  # Somma per la colonna Qta
+        worksheet.write_formula('O62', f"=SUM(O11:O61)")  # Somma per la colonna Tot Costo
 
 # Streamlit app e scrittura del file
 st.title('Asics Xmag')
