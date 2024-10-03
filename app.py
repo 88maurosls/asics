@@ -108,6 +108,7 @@ def write_data_in_chunks(writer, df, stagione, data_inizio, data_fine, ricarico)
         worksheet.write('A5', 'RICARICO:')
         worksheet.write('B5', ricarico)  # Inserisci il valore di RICARICO
 
+
         # Imposta la colonna "Barcode" come testo per evitare la notazione scientifica
         text_format = writer.book.add_format({'num_format': '@'})  # Formato per trattare come testo
         worksheet.set_column('L:L', 20, text_format)  # Colonna Barcode come testo
