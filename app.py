@@ -88,7 +88,8 @@ def write_data_in_chunks(writer, df, sheet_name_base, stagione, data_inizio, dat
         sheet_name = f"{sheet_name_base}" if i == 0 else f"{sheet_name_base} {i+1}"  # Nome del foglio (UOMO, UOMO 2, etc.)
 
         # Scrivi i dati del DataFrame
-        chunk_df.to_excel(writer, sheet_name=sheet_name, startrow=9, index=False)
+        start_row = 9  # Riga in cui iniziano i dati (10 per l'utente)
+        chunk_df.to_excel(writer, sheet_name=sheet_name, startrow=start_row, index=False)
 
         # Scrivi l'intestazione fissa nelle prime righe
         worksheet = writer.sheets[sheet_name]
@@ -107,10 +108,13 @@ def write_data_in_chunks(writer, df, sheet_name_base, stagione, data_inizio, dat
         text_format = writer.book.add_format({'num_format': '@'})  # Formato per trattare come testo
         worksheet.set_column('L:L', 20, text_format)  # Colonna Barcode come testo
 
-        # Aggiungi la somma nelle celle N62 e O62 con formattazione numerica
+        # Trova l'ultima riga dei dati
+        last_data_row = len(chunk_df) + start_row
+
+        # Aggiungi la somma subito sotto l'ultima riga dei dati
         number_format = writer.book.add_format({'num_format': '#,##0.00'})  # Formato numerico con due decimali
-        worksheet.write_formula('N62', f"=SUM(N11:N61)", number_format)  # Somma per la colonna Qta con formattazione
-        worksheet.write_formula('O62', f"=SUM(O11:O61)", number_format)  # Somma per la colonna Tot Costo con formattazione
+        worksheet.write_formula(f'N{last_data_row + 2}', f"=SUM(N{start_row+1}:N{last_data_row})", number_format)  # Somma per la colonna Qta
+        worksheet.write_formula(f'O{last_data_row + 2}', f"=SUM(O{start_row+1}:O{last_data_row})", number_format)  # Somma per la colonna Tot Costo
 
         # Applica la formattazione numerica con due decimali alle colonne Qta e Tot Costo
         worksheet.set_column('N:N', None, number_format)
