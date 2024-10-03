@@ -132,6 +132,31 @@ def write_to_gsheet(data, sheet_url):
         if key in existing_entries:
             # Se la combinazione esiste già, aggiorna la riga esistente
             row_to_update = existing_entries[key]
+            worksheet.update_cell(row_to_update, 3, gender)  # Aggiorna la colonna C (Gender) nella riga trovata
+        else:
+            # Altrimenti, aggiungi una nuova riga
+            worksheet.append_row([articolo, colore, gender])
+
+    st.success(f"Dati aggiornati o aggiunti su Google Sheet.")
+# Funzione per scrivere o aggiornare dati su Google Sheets
+def write_to_gsheet(data, sheet_url):
+    client = connect_to_gsheet()
+    sheet = client.open_by_url(sheet_url)
+    worksheet = sheet.worksheet("Gender")
+
+    # Recupera i dati esistenti dal foglio
+    existing_data = worksheet.get_all_values()
+
+    # Ottieni le combinazioni già esistenti (Articolo, Colore) con il loro indice di riga
+    existing_entries = {f"{row[0]}-{row[1]}": idx+2 for idx, row in enumerate(existing_data[1:])}  # Ignora l'intestazione
+
+    # Prepara i nuovi dati
+    for (articolo, colore, gender) in data:
+        key = f"{articolo}-{colore}"
+
+        if key in existing_entries:
+            # Se la combinazione esiste già, aggiorna la riga esistente
+            row_to_update = existing_entries[key]
             worksheet.update(f'C{row_to_update}', gender)  # Aggiorna solo la colonna Gender
         else:
             # Altrimenti, aggiungi una nuova riga
