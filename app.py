@@ -84,8 +84,8 @@ def write_data_in_chunks(writer, df, sheet_name_base):
     num_chunks = len(df) // 50 + (1 if len(df) % 50 > 0 else 0)  # Calcola il numero di fogli necessari
     for i in range(num_chunks):
         start_row = i * 50
-        end_row = (i + 1) * 50
-        chunk_df = df[start_row:end_row]  # Estrai un blocco di massimo 50 righe
+        end_row = min((i + 1) * 50, len(df))  # Assicurati di non eccedere il numero di righe disponibili
+        chunk_df = df.iloc[start_row:end_row]  # Estrai un blocco di massimo 50 righe
         sheet_name = f"{sheet_name_base}" if i == 0 else f"{sheet_name_base} {i+1}"  # Nome del foglio (UOMO, UOMO 2, etc.)
         worksheet = writer.book.add_worksheet(sheet_name)
 
