@@ -140,24 +140,45 @@ def connect_to_gsheet():
     client = gspread.authorize(creds)
     return client
 
+# Funzione per controllare se l'articolo e il colore sono già presenti nel foglio
+def check_existing_entries(sheet_url):
+    client = connect_to_gsheet()
+    sheet = client.open_by_url(sheet_url)
+    worksheet = sheet.worksheet("Gender")
+
+    # Ottieni tutti i dati dal foglio
+    data = worksheet.get_all_values()
+
+    # Crea un set di tuple per combinazione di (Articolo, Colore)
+    existing_entries = {(row[0], row[1]) for row in data[1:]}  # Ignora l'intestazione
+    return existing_entries
+
 # Funzione per scrivere dati su Google Sheets
 def write_to_gsheet(data, sheet_url):
     client = connect_to_gsheet()
-    # Apri il Google Sheet con l'URL fornito
     sheet = client.open_by_url(sheet_url)
-    
-    # Seleziona il foglio chiamato "Gender"
     worksheet = sheet.worksheet("Gender")
-    
+
     # Trova la prima riga vuota
     next_row = len(worksheet.get_all_values()) + 1
 
-    # Prepara i dati da scrivere in formato di lista di liste
-    rows = [[articolo, colore, gender] for (articolo, colore, gender) in data]
+    # Ottieni le combinazioni già esistenti (Articolo, Colore)
+    existing_entries = check_existing_entries(sheet_url)
 
-    # Scrivi i dati in un range (A, B, C per Articolo, Colore e Gender)
-    cell_range = f'A{next_row}:C{next_row + len(rows) - 1}'
-    worksheet.update(cell_range, rows)
+    # Filtra i nuovi dati per evitare duplicati
+    new_rows = []
+    for (articolo, colore, gender) in data:
+        if (articolo, colore) not in existing_entries:
+            new_rows.append([articolo, colore, gender])
+
+    if not new_rows:
+        st.warning("Non ci sono nuovi dati da aggiungere, tutto già presente!")
+        return
+
+    # Prepara il range e scrivi i nuovi dati
+    cell_range = f'A{next_row}:C{next_row + len(new_rows) - 1}'
+    worksheet.update(cell_range, new_rows)
+    st.success(f"{len(new_rows)} nuovi dati scritti su Google Sheet.")
 
 
 # Streamlit app
@@ -210,42 +231,3 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
             write_to_gsheet(gsheet_data, google_sheet_url)
 
             st.success("Dati scritti con successo su Google Sheet!")
-            
-            # Genera il file da scaricare
-            uomo_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UOMO', axis=1)]
-            donna_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'DONNA', axis=1)]
-            unisex_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UNISEX', axis=1)]
-
-            uomo_output = io.BytesIO()
-            donna_output = io.BytesIO()
-            unisex_output = io.BytesIO()
-
-            if not uomo_df.empty:
-                with pd.ExcelWriter(uomo_output, engine='xlsxwriter') as writer_uomo:
-                    write_data_in_chunks(writer_uomo, uomo_df, stagione, data_inizio, data_fine, ricarico)
-                st.download_button(
-                    label="Download File UOMO",
-                    data=uomo_output.getvalue(),
-                    file_name="uomo_processed_file.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-
-            if not donna_df.empty:
-                with pd.ExcelWriter(donna_output, engine='xlsxwriter') as writer_donna:
-                    write_data_in_chunks(writer_donna, donna_df, stagione, data_inizio, data_fine, ricarico)
-                st.download_button(
-                    label="Download File DONNA",
-                    data=donna_output.getvalue(),
-                    file_name="donna_processed_file.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-
-            if not unisex_df.empty:
-                with pd.ExcelWriter(unisex_output, engine='xlsxwriter') as writer_unisex:
-                    write_data_in_chunks(writer_unisex, unisex_df, stagione, data_inizio, data_fine, ricarico)
-                st.download_button(
-                    label="Download File UNISEX",
-                    data=unisex_output.getvalue(),
-                    file_name="unisex_processed_file.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
