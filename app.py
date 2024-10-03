@@ -140,22 +140,10 @@ def connect_to_gsheet():
     client = gspread.authorize(creds)
     return client
 
-# Funzione per recuperare i dati "Articolo", "Colore" e "Gender" dal foglio "Gender"
-def get_gender_from_gsheet(sheet_url):
-    client = connect_to_gsheet()
-    sheet = client.open_by_url(sheet_url)
-    worksheet = sheet.worksheet("Gender")
-    
-    # Recupera tutti i valori dal foglio
-    data = worksheet.get_all_values()
-
-    # Creare un dizionario {(Articolo, Colore): Gender}
-    gender_dict = {(row[0], row[1]): row[2] for row in data[1:]}  # Ignora l'intestazione
-    return gender_dict
-
-# Funzione per scrivere dati su Google Sheets nel foglio specificato
+# Funzione per scrivere dati su Google Sheets
 def write_to_gsheet(data, sheet_url):
     client = connect_to_gsheet()
+    # Apri il Google Sheet con l'URL fornito
     sheet = client.open_by_url(sheet_url)
     
     # Seleziona il foglio chiamato "Gender"
@@ -201,21 +189,13 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
 
     unique_combinations = final_df[["Articolo", "Colore"]].drop_duplicates()
 
-    # Recupera il genere già presente nel foglio "Gender"
-    google_sheet_url = "https://docs.google.com/spreadsheets/d/1p84nF9Tq-1ZJgQSEJcgrePLvQyGQ3cjt_1IZP5qPs00/edit?usp=sharing"
-    gender_dict = get_gender_from_gsheet(google_sheet_url)
-
     st.write("Anteprima Articolo-Colore:")
 
     selections = {}
 
     for index, row in unique_combinations.iterrows():
-        articolo_colore = (row['Articolo'], row['Colore'])
-        
-        # Se il genere è già presente in Google Sheet, usalo, altrimenti usa "Seleziona..."
-        preselected_gender = gender_dict.get(articolo_colore, "Seleziona...")
-        
-        flag = st.selectbox(f"{row['Articolo']}-{row['Colore']}", options=["Seleziona...", "UOMO", "DONNA", "UNISEX"], key=index, index=["Seleziona...", "UOMO", "DONNA", "UNISEX"].index(preselected_gender))
+        # Aggiungi l'opzione "UNISEX" al selectbox
+        flag = st.selectbox(f"{row['Articolo']}-{row['Colore']}", options=["Seleziona...", "UOMO", "DONNA", "UNISEX"], key=index)
         selections[(row['Articolo'], row['Colore'])] = flag
 
     if st.button("Elabora File"):
@@ -226,6 +206,46 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
             gsheet_data = [(row['Articolo'], row['Colore'], selections[(row['Articolo'], row['Colore'])]) for index, row in unique_combinations.iterrows()]
             
             # Scrivi i dati nel Google Sheet
+            google_sheet_url = "https://docs.google.com/spreadsheets/d/1p84nF9Tq-1ZJgQSEJcgrePLvQyGQ3cjt_1IZP5qPs00/edit?usp=sharing"
             write_to_gsheet(gsheet_data, google_sheet_url)
 
             st.success("Dati scritti con successo su Google Sheet!")
+            
+            # Genera il file da scaricare
+            uomo_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UOMO', axis=1)]
+            donna_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'DONNA', axis=1)]
+            unisex_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UNISEX', axis=1)]
+
+            uomo_output = io.BytesIO()
+            donna_output = io.BytesIO()
+            unisex_output = io.BytesIO()
+
+            if not uomo_df.empty:
+                with pd.ExcelWriter(uomo_output, engine='xlsxwriter') as writer_uomo:
+                    write_data_in_chunks(writer_uomo, uomo_df, stagione, data_inizio, data_fine, ricarico)
+                st.download_button(
+                    label="Download File UOMO",
+                    data=uomo_output.getvalue(),
+                    file_name="uomo_processed_file.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+
+            if not donna_df.empty:
+                with pd.ExcelWriter(donna_output, engine='xlsxwriter') as writer_donna:
+                    write_data_in_chunks(writer_donna, donna_df, stagione, data_inizio, data_fine, ricarico)
+                st.download_button(
+                    label="Download File DONNA",
+                    data=donna_output.getvalue(),
+                    file_name="donna_processed_file.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+
+            if not unisex_df.empty:
+                with pd.ExcelWriter(unisex_output, engine='xlsxwriter') as writer_unisex:
+                    write_data_in_chunks(writer_unisex, unisex_df, stagione, data_inizio, data_fine, ricarico)
+                st.download_button(
+                    label="Download File UNISEX",
+                    data=unisex_output.getvalue(),
+                    file_name="unisex_processed_file.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
