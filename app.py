@@ -37,7 +37,7 @@ def process_file(file):
         "Barcode": df["EAN code"],  # Tratta il barcode come stringa
         "EAN": "",  # Colonna vuota aggiunta subito dopo Barcode
         "Qta": df["Quantity"],
-        "Tot Costo": "",
+        "Tot Costo": df["Unit price"].apply(clean_price) * df["Quantity"],  # Calcola Tot Costo come Costo * Qta
         "Materiale": "",
         "Spec. Materiale": "",
         "Misure": "",
