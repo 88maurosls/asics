@@ -17,7 +17,6 @@ def clean_price(price):
 # Funzione per duplicare le righe in base al valore di Qta
 def expand_rows(df):
     expanded_df = df.loc[df.index.repeat(df['Qta'])].assign(Qta=1)
-    # Aggiorna la colonna Tot Costo moltiplicando Costo per la nuova Qta (che ora è sempre 1)
     expanded_df['Tot Costo'] = expanded_df['Costo']
     return expanded_df
 
@@ -46,25 +45,24 @@ def get_base_color(color_name, colors_mapping):
 
 # Funzione per elaborare ogni file caricato
 def process_file(file, colors_mapping, ricarico):
-    df = pd.read_excel(file, dtype={'Color code': str, 'EAN code': str})  # Leggi "Color code" e "EAN code" come stringhe
+    df = pd.read_excel(file, dtype={'Color code': str, 'EAN code': str})
     
-    # Crea il DataFrame di output con le colonne richieste
     output_df = pd.DataFrame({
         "Articolo": df["Trading code"],
         "Descrizione": df["Item name"],
         "Categoria": "CALZATURE",
         "Subcategoria": "Sneakers",
-        "Colore": df["Color code"].apply(lambda x: x.zfill(3)),  # Mantieni gli zeri iniziali
-        "Base Color": df["Color name"].apply(lambda x: get_base_color(x, colors_mapping)),  # Assegna il "Base Color"
+        "Colore": df["Color code"].apply(lambda x: x.zfill(3)),
+        "Base Color": df["Color name"].apply(lambda x: get_base_color(x, colors_mapping)),
         "Made in": "",
         "Sigla Bimbo": "",
-        "Costo": df["Unit price"].apply(clean_price),  # Pulisci e converti i prezzi in numeri
-        "Retail": df["Unit price"].apply(clean_price) * ricarico,  # Moltiplica per il valore di RICARICO
-        "Taglia": df["Size US"].apply(format_taglia),  # Formatta la colonna Taglia
-        "Barcode": df["EAN code"],  # Tratta il barcode come stringa
-        "EAN": "",  # Colonna vuota aggiunta subito dopo Barcode
+        "Costo": df["Unit price"].apply(clean_price),
+        "Retail": df["Unit price"].apply(clean_price) * ricarico,
+        "Taglia": df["Size US"].apply(format_taglia),
+        "Barcode": df["EAN code"],
+        "EAN": "",
         "Qta": df["Quantity"],
-        "Tot Costo": df["Unit price"].apply(clean_price) * df["Quantity"] * ricarico,  # Calcola Tot Costo come Costo * Qta * Ricarico
+        "Tot Costo": df["Unit price"].apply(clean_price) * df["Quantity"] * ricarico,
         "Materiale": "",
         "Spec. Materiale": "",
         "Misure": "",
@@ -75,64 +73,49 @@ def process_file(file, colors_mapping, ricarico):
         "HS Code": ""
     })
     
-    # Applica la funzione per duplicare le righe in base al valore di Qta
     expanded_df = expand_rows(output_df)
     
     return expanded_df
 
 # Funzione per suddividere i dati in fogli di massimo 50 righe e aggiungere l'intestazione
 def write_data_in_chunks(writer, df, stagione, data_inizio, data_fine, ricarico):
-    num_chunks = len(df) // 50 + (1 if len(df) % 50 > 0 else 0)  # Calcola il numero di fogli necessari
+    num_chunks = len(df) // 50 + (1 if len(df) % 50 > 0 else 0)
     for i in range(num_chunks):
-        chunk_df = df[i*50:(i+1)*50]  # Estrai un blocco di massimo 50 righe
-
-        # Utilizza nomi di fogli standard (Foglio1, Foglio2, ecc.)
+        chunk_df = df[i*50:(i+1)*50]
         sheet_name = f"Foglio{i+1}"
-
-        # Scrivi i dati del DataFrame
-        start_row = 9  # Riga in cui iniziano i dati (10 per l'utente)
+        start_row = 9
         chunk_df.to_excel(writer, sheet_name=sheet_name, startrow=start_row, index=False)
 
-        # Verifica che il foglio sia stato creato e accedilo
         if sheet_name in writer.sheets:
             worksheet = writer.sheets[sheet_name]
         else:
             raise ValueError(f"Il foglio {sheet_name} non è stato trovato!")
 
-        # Scrivi l'intestazione fissa nelle prime righe
         worksheet.write('A1', 'STAGIONE:')
-        worksheet.write('B1', stagione)  # Inserisci il valore di STAGIONE senza apice
+        worksheet.write('B1', stagione)
         worksheet.write('A2', 'TIPO:')
-        worksheet.write('B2', 'ACCESSORI')  # Inserisci ACCESSORI accanto a TIPO
+        worksheet.write('B2', 'ACCESSORI')
         worksheet.write('A3', 'DATA INIZIO:')
-        worksheet.write('B3', data_inizio.strftime('%d/%m/%Y'))  # Formatta correttamente la DATA INIZIO senza apice
+        worksheet.write('B3', data_inizio.strftime('%d/%m/%Y'))
         worksheet.write('A4', 'DATA FINE:')
-        worksheet.write('B4', data_fine.strftime('%d/%m/%Y'))  # Formatta correttamente la DATA FINE senza apice
+        worksheet.write('B4', data_fine.strftime('%d/%m/%Y'))
         worksheet.write('A5', 'RICARICO:')
-        worksheet.write('B5', ricarico)  # Inserisci il valore di RICARICO
+        worksheet.write('B5', ricarico)
 
-        # Imposta la colonna "Barcode" come testo per evitare la notazione scientifica
-        text_format = writer.book.add_format({'num_format': '@'})  # Formato per trattare come testo
-        worksheet.set_column('L:L', 20, text_format)  # Colonna Barcode come testo
+        text_format = writer.book.add_format({'num_format': '@'})
+        worksheet.set_column('L:L', 20, text_format)
 
-        # Trova l'ultima riga dei dati
         last_data_row = len(chunk_df) + start_row
+        empty_row = last_data_row + 1
+        worksheet.write(f'N{empty_row}', "")
+        worksheet.write(f'O{empty_row}', "")
 
-        # Lascia una riga vuota
-        empty_row = last_data_row + 1  # Riga vuota subito dopo l'ultima riga di dati
-        worksheet.write(f'N{empty_row}', "")  # Riga vuota per Qta
-        worksheet.write(f'O{empty_row}', "")  # Riga vuota per Tot Costo
-
-        # Aggiungi la somma subito sotto la riga vuota
-        total_row = empty_row + 2  # Riga per le somme, aggiungiamo +2 per lasciare una riga bianca
-        number_format = writer.book.add_format({'num_format': '#,##0.00'})  # Formato numerico con due decimali
-        worksheet.write_formula(f'N{total_row}', f"=SUM(N{start_row+2}:N{last_data_row + 1})", number_format)  # Somma per la colonna Qta
-        worksheet.write_formula(f'O{total_row}', f"=SUM(O{start_row+2}:O{last_data_row + 1})", number_format)  # Somma per la colonna Tot Costo
-
-        # Applica la formattazione numerica con due decimali alle colonne Qta e Tot Costo
+        total_row = empty_row + 2
+        number_format = writer.book.add_format({'num_format': '#,##0.00'})
+        worksheet.write_formula(f'N{total_row}', f"=SUM(N{start_row+2}:N{last_data_row + 1})", number_format)
+        worksheet.write_formula(f'O{total_row}', f"=SUM(O{start_row+2}:O{last_data_row + 1})", number_format)
         worksheet.set_column('N:N', None, number_format)
         worksheet.set_column('O:O', None, number_format)
-
 
 # Streamlit app e scrittura del file
 st.title('Asics Xmag')
@@ -141,10 +124,10 @@ st.title('Asics Xmag')
 stagione = st.text_input("Inserisci STAGIONE")
 data_inizio = st.date_input("Inserisci DATA INIZIO")
 data_fine = st.date_input("Inserisci DATA FINE")
-ricarico = st.text_input("Inserisci RICARICO")
+ricarico = st.text_input("Inserisci RICARICO", value="2")  # Imposta 2 come valore predefinito
 
 # Carica il file color.txt dalla directory del progetto
-colors_mapping = load_colors_mapping("color.txt")  # Usa il percorso relativo alla main folder
+colors_mapping = load_colors_mapping("color.txt")
 
 # Permetti l'upload di più file Excel
 uploaded_files = st.file_uploader("Scegli i file Excel", accept_multiple_files=True)
@@ -156,44 +139,34 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
     for uploaded_file in uploaded_files:
         processed_dfs.append(process_file(uploaded_file, colors_mapping, ricarico))
     
-    # Concatenate tutti i DataFrame
     final_df = pd.concat(processed_dfs, ignore_index=True)
 
-    # Seleziona solo le combinazioni uniche di "Articolo" e "Colore"
     unique_combinations = final_df[["Articolo", "Colore"]].drop_duplicates()
 
     st.write("Anteprima Articolo-Colore:")
 
-    # Dizionario per raccogliere il flag UOMO/DONNA per ogni combinazione
     selections = {}
 
-    # Visualizzare l'anteprima dei dati unici con opzione per UOMO/DONNA
     for index, row in unique_combinations.iterrows():
-        flag = st.selectbox(f"{row['Articolo']}-{row['Colore']}", options=["Seleziona...", "UOMO", "DONNA"], key=index)  # Selezione esplicita
+        flag = st.selectbox(f"{row['Articolo']}-{row['Colore']}", options=["Seleziona...", "UOMO", "DONNA"], key=index)
         selections[(row['Articolo'], row['Colore'])] = flag
 
     if st.button("Elabora File"):
-        # Controlla se tutte le selezioni sono valide (UOMO o DONNA)
         if any(flag == "Seleziona..." for flag in selections.values()):
             st.error("Devi selezionare UOMO o DONNA per tutte le combinazioni!")
         else:
-            # Filtra i dati in base alla selezione UOMO/DONNA
             uomo_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UOMO', axis=1)]
             donna_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'DONNA', axis=1)]
 
-            # Crea due file Excel distinti, uno per UOMO e uno per DONNA
             uomo_output = io.BytesIO()
             donna_output = io.BytesIO()
 
-            # Scrivi i dati di UOMO con la logica di suddivisione in blocchi di 50 righe e aggiungi l'intestazione
             with pd.ExcelWriter(uomo_output, engine='xlsxwriter') as writer_uomo:
                 write_data_in_chunks(writer_uomo, uomo_df, stagione, data_inizio, data_fine, ricarico)
 
-            # Scrivi i dati di DONNA con la logica di suddivisione in blocchi di 50 righe e aggiungi l'intestazione
             with pd.ExcelWriter(donna_output, engine='xlsxwriter') as writer_donna:
                 write_data_in_chunks(writer_donna, donna_df, stagione, data_inizio, data_fine, ricarico)
 
-            # Fornisci due pulsanti separati per scaricare i file UOMO e DONNA
             st.download_button(
                 label="Download File UOMO",
                 data=uomo_output.getvalue(),
