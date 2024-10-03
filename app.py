@@ -15,7 +15,10 @@ def clean_price(price):
 
 # Funzione per duplicare le righe in base al valore di Qta
 def expand_rows(df):
-    return df.loc[df.index.repeat(df['Qta'])].assign(Qta=1)
+    expanded_df = df.loc[df.index.repeat(df['Qta'])].assign(Qta=1)
+    # Aggiorna la colonna Tot Costo moltiplicando Costo per la nuova Qta (che ora è sempre 1)
+    expanded_df['Tot Costo'] = expanded_df['Costo']
+    return expanded_df
 
 # Funzione per elaborare ogni file caricato
 def process_file(file):
