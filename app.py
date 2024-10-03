@@ -113,31 +113,32 @@ def get_existing_gender(sheet_url):
     return gender_dict
 
 # Funzione per scrivere dati su Google Sheets
+# Funzione per scrivere o aggiornare dati su Google Sheets
 def write_to_gsheet(data, sheet_url):
     client = connect_to_gsheet()
     sheet = client.open_by_url(sheet_url)
     worksheet = sheet.worksheet("Gender")
 
-    # Trova la prima riga vuota
-    next_row = len(worksheet.get_all_values()) + 1
+    # Recupera i dati esistenti dal foglio
+    existing_data = worksheet.get_all_values()
 
-    # Ottieni le combinazioni già esistenti (Articolo, Colore)
-    existing_entries = get_existing_gender(sheet_url)
+    # Ottieni le combinazioni già esistenti (Articolo, Colore) con il loro indice di riga
+    existing_entries = {f"{row[0]}-{row[1]}": idx+2 for idx, row in enumerate(existing_data[1:])}  # Ignora l'intestazione
 
-    # Filtra i nuovi dati per evitare duplicati
-    new_rows = []
+    # Prepara i nuovi dati
     for (articolo, colore, gender) in data:
-        if f"{articolo}-{colore}" not in existing_entries:
-            new_rows.append([articolo, colore, gender])
+        key = f"{articolo}-{colore}"
 
-    if not new_rows:
-        st.warning("Non ci sono nuovi dati da aggiungere, tutto già presente!")
-        return
+        if key in existing_entries:
+            # Se la combinazione esiste già, aggiorna la riga esistente
+            row_to_update = existing_entries[key]
+            worksheet.update(f'C{row_to_update}', gender)  # Aggiorna solo la colonna Gender
+        else:
+            # Altrimenti, aggiungi una nuova riga
+            worksheet.append_row([articolo, colore, gender])
 
-    # Prepara il range e scrivi i nuovi dati
-    cell_range = f'A{next_row}:C{next_row + len(new_rows) - 1}'
-    worksheet.update(cell_range, new_rows)
-    st.success(f"{len(new_rows)} nuovi dati scritti su Google Sheet.")
+    st.success(f"Dati aggiornati o aggiunti su Google Sheet.")
+
 
 
 # Streamlit app
