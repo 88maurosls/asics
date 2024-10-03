@@ -117,7 +117,7 @@ def write_data_in_chunks(writer, df, sheet_name_base, stagione, data_inizio, dat
         worksheet.write(f'O{empty_row}', "")  # Riga vuota per Tot Costo
         
         # Aggiungi la somma subito sotto la riga vuota
-        total_row = empty_row + 1  # Riga per le somme
+        total_row = empty_row + 2  # Riga per le somme, aggiungiamo +2 per lasciare una riga bianca
         number_format = writer.book.add_format({'num_format': '#,##0.00'})  # Formato numerico con due decimali
         worksheet.write_formula(f'N{total_row}', f"=SUM(N{start_row+2}:N{last_data_row + 1})", number_format)  # Somma per la colonna Qta
         worksheet.write_formula(f'O{total_row}', f"=SUM(O{start_row+2}:O{last_data_row + 1})", number_format)  # Somma per la colonna Tot Costo
@@ -125,6 +125,7 @@ def write_data_in_chunks(writer, df, sheet_name_base, stagione, data_inizio, dat
         # Applica la formattazione numerica con due decimali alle colonne Qta e Tot Costo
         worksheet.set_column('N:N', None, number_format)
         worksheet.set_column('O:O', None, number_format)
+
 
         
 
