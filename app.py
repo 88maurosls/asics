@@ -107,9 +107,14 @@ def write_data_in_chunks(writer, df, sheet_name_base, stagione, data_inizio, dat
         text_format = writer.book.add_format({'num_format': '@'})  # Formato per trattare come testo
         worksheet.set_column('L:L', 20, text_format)  # Colonna Barcode come testo
 
-        # Aggiungi la somma nelle celle N62 e O62
-        worksheet.write_formula('N62', f"=SUM(N11:N61)")  # Somma per la colonna Qta
-        worksheet.write_formula('O62', f"=SUM(O11:O61)")  # Somma per la colonna Tot Costo
+        # Aggiungi la somma nelle celle N62 e O62 con formattazione numerica
+        number_format = writer.book.add_format({'num_format': '#,##0.00'})  # Formato numerico con due decimali
+        worksheet.write_formula('N62', f"=SUM(N11:N61)", number_format)  # Somma per la colonna Qta con formattazione
+        worksheet.write_formula('O62', f"=SUM(O11:O61)", number_format)  # Somma per la colonna Tot Costo con formattazione
+
+        # Applica la formattazione numerica con due decimali alle colonne Qta e Tot Costo
+        worksheet.set_column('N:N', None, number_format)
+        worksheet.set_column('O:O', None, number_format)
 
 # Streamlit app e scrittura del file
 st.title('Asics Xmag')
