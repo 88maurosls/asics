@@ -13,6 +13,10 @@ def format_taglia(size_us):
 def clean_price(price):
     return float(str(price).replace("€", "").replace(",", "").strip())
 
+# Funzione per duplicare le righe in base al valore di Qta
+def expand_rows(df):
+    return df.loc[df.index.repeat(df['Qta'])].assign(Qta=1)
+
 # Funzione per elaborare ogni file caricato
 def process_file(file):
     df = pd.read_excel(file, dtype={'Color code': str, 'EAN code': str})  # Leggi "Color code" e "EAN code" come stringhe
@@ -43,7 +47,10 @@ def process_file(file):
         "HS Code": ""
     })
     
-    return output_df
+    # Applica la funzione per duplicare le righe in base al valore di Qta
+    expanded_df = expand_rows(output_df)
+    
+    return expanded_df
 
 # Streamlit app e scrittura del file
 st.title('Asics Xmag')
