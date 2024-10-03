@@ -118,7 +118,7 @@ def write_data_in_chunks(writer, df, stagione, data_inizio, data_fine, ricarico)
         worksheet.set_column('O:O', None, number_format)
 
 # Streamlit app e scrittura del file
-st.title('Asics Xmag Lineare')
+st.title('Asics Xmag Template Lineare v1.2')
 
 # Campi di input per l'intestazione
 stagione = st.text_input("Inserisci STAGIONE")
