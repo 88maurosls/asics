@@ -81,21 +81,16 @@ def process_file(file, colors_mapping):
     return expanded_df
 
 # Funzione per suddividere i dati in fogli di massimo 50 righe e aggiungere l'intestazione
-# Funzione per suddividere i dati in fogli di massimo 50 righe e aggiungere l'intestazione
 def write_data_in_chunks(writer, df, stagione, data_inizio, data_fine, ricarico):
     num_chunks = len(df) // 50 + (1 if len(df) % 50 > 0 else 0)  # Calcola il numero di fogli necessari
     for i in range(num_chunks):
         chunk_df = df[i*50:(i+1)*50]  # Estrai un blocco di massimo 50 righe
 
-        # Usa i nomi standard di foglio generati automaticamente da Excel (Foglio1, Foglio2, ecc.)
-        # Non passiamo esplicitamente sheet_name per permettere a Excel di assegnare nomi di default
-        sheet_name = None  # Lascia vuoto il sheet_name per usare nomi standard Foglio1, Foglio2, ecc.
-
-        # Scrivi i dati del DataFrame
+        # Scrivi i dati del DataFrame senza specificare sheet_name
         start_row = 9  # Riga in cui iniziano i dati (10 per l'utente)
-        chunk_df.to_excel(writer, sheet_name=sheet_name, startrow=start_row, index=False)
+        chunk_df.to_excel(writer, startrow=start_row, index=False)
 
-        # Ottieni il nome del foglio corrente usando la lista dei fogli creati finora
+        # Recupera il nome del foglio creato automaticamente
         worksheet = writer.sheets[list(writer.sheets.keys())[i]]
 
         # Scrivi l'intestazione fissa nelle prime righe
@@ -130,10 +125,7 @@ def write_data_in_chunks(writer, df, stagione, data_inizio, data_fine, ricarico)
 
         # Applica la formattazione numerica con due decimali alle colonne Qta e Tot Costo
         worksheet.set_column('N:N', None, number_format)
-        worksheet.set_column('O:O', None, number_format)
-
-
-        
+        worksheet.set_column('O:O', None, number_format)        
 
 # Streamlit app e scrittura del file
 st.title('Asics Xmag')
