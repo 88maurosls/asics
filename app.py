@@ -25,8 +25,15 @@ def load_colors_mapping(file_path):
     colors_mapping = {}
     with open(file_path, 'r', encoding='utf-8') as file:
         for line in file:
-            key, value = line.strip().split(';')
-            colors_mapping[key] = value
+            line = line.strip()
+            if ';' in line:
+                try:
+                    key, value = line.split(';')
+                    colors_mapping[key] = value
+                except ValueError:
+                    st.warning(f"Errore nel parsing della riga: {line}. Ignorata.")
+            else:
+                st.warning(f"Riga malformata nel file color.txt: {line}. Ignorata.")
     return colors_mapping
 
 # Funzione per determinare il valore di "Base Color"
