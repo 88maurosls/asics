@@ -79,46 +79,6 @@ def process_file(file, colors_mapping, ricarico):
     
     return expanded_df
 
-# Funzione per suddividere i dati in fogli di massimo 50 righe e aggiungere l'intestazione
-def write_data_in_chunks(writer, df, stagione, data_inizio, data_fine, ricarico):
-    num_chunks = len(df) // 50 + (1 if len(df) % 50 > 0 else 0)
-    for i in range(num_chunks):
-        chunk_df = df[i*50:(i+1)*50]
-        sheet_name = f"Foglio{i+1}"
-        start_row = 9
-        chunk_df.to_excel(writer, sheet_name=sheet_name, startrow=start_row, index=False)
-
-        if sheet_name in writer.sheets:
-            worksheet = writer.sheets[sheet_name]
-        else:
-            raise ValueError(f"Il foglio {sheet_name} non è stato trovato!")
-
-        worksheet.write('A1', 'STAGIONE:')
-        worksheet.write('B1', stagione)
-        worksheet.write('A2', 'TIPO:')
-        worksheet.write('B2', 'ACCESSORI')
-        worksheet.write('A3', 'DATA INIZIO:')
-        worksheet.write('B3', data_inizio.strftime('%d/%m/%Y'))
-        worksheet.write('A4', 'DATA FINE:')
-        worksheet.write('B4', data_fine.strftime('%d/%m/%Y'))
-        worksheet.write('A5', 'RICARICO:')
-        worksheet.write('B5', ricarico)
-
-        text_format = writer.book.add_format({'num_format': '@'})
-        worksheet.set_column('L:L', 20, text_format)
-
-        last_data_row = len(chunk_df) + start_row
-        empty_row = last_data_row + 1
-        worksheet.write(f'N{empty_row}', "")
-        worksheet.write(f'O{empty_row}', "")
-
-        total_row = empty_row + 2
-        number_format = writer.book.add_format({'num_format': '#,##0.00'})
-        worksheet.write_formula(f'N{total_row}', f"=SUM(N{start_row+2}:N{last_data_row + 1})", number_format)
-        worksheet.write_formula(f'O{total_row}', f"=SUM(O{start_row+2}:O{last_data_row + 1})", number_format)
-        worksheet.set_column('N:N', None, number_format)
-        worksheet.set_column('O:O', None, number_format)
-
 # Funzione per connettersi a Google Sheets
 def connect_to_gsheet():
     credentials = {
@@ -150,6 +110,7 @@ def get_existing_gender(sheet_url):
 
     # Creare un dizionario {(Articolo, Colore): Gender}
     gender_dict = {(row[0], row[1]): row[2] for row in data[1:]}  # Ignora l'intestazione
+    st.write("Dati recuperati dal Google Sheet:", gender_dict)  # Debugging: stampa i dati recuperati
     return gender_dict
 
 # Funzione per scrivere dati su Google Sheets
@@ -223,7 +184,16 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
         # Se il genere è già presente in Google Sheet, usalo, altrimenti usa "Seleziona..."
         preselected_gender = gender_dict.get(articolo_colore, "Seleziona...")
         
-        flag = st.selectbox(f"{row['Articolo']}-{row['Colore']}", options=["Seleziona...", "UOMO", "DONNA", "UNISEX"], key=index, index=["Seleziona...", "UOMO", "DONNA", "UNISEX"].index(preselected_gender) if preselected_gender in ["UOMO", "DONNA", "UNISEX"] else 0)
+        # Debugging: stampa il valore di preselected_gender
+        st.write(f"Combinazione: {articolo_colore}, Preselezione: {preselected_gender}")
+
+        flag = st.selectbox(
+            f"{row['Articolo']}-{row['Colore']}", 
+            options=["Seleziona...", "UOMO", "DONNA", "UNISEX"], 
+            key=index, 
+            index=["Seleziona...", "UOMO", "DONNA", "UNISEX"].index(preselected_gender) 
+            if preselected_gender in ["UOMO", "DONNA", "UNISEX"] else 0
+        )
         selections[(row['Articolo'], row['Colore'])] = flag
 
     if st.button("Elabora File"):
