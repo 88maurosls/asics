@@ -79,6 +79,46 @@ def process_file(file, colors_mapping, ricarico):
     
     return expanded_df
 
+# Funzione per suddividere i dati in fogli di massimo 50 righe e aggiungere l'intestazione
+def write_data_in_chunks(writer, df, stagione, data_inizio, data_fine, ricarico):
+    num_chunks = len(df) // 50 + (1 if len(df) % 50 > 0 else 0)
+    for i in range(num_chunks):
+        chunk_df = df[i*50:(i+1)*50]
+        sheet_name = f"Foglio{i+1}"
+        start_row = 9
+        chunk_df.to_excel(writer, sheet_name=sheet_name, startrow=start_row, index=False)
+
+        if sheet_name in writer.sheets:
+            worksheet = writer.sheets[sheet_name]
+        else:
+            raise ValueError(f"Il foglio {sheet_name} non è stato trovato!")
+
+        worksheet.write('A1', 'STAGIONE:')
+        worksheet.write('B1', stagione)
+        worksheet.write('A2', 'TIPO:')
+        worksheet.write('B2', 'ACCESSORI')
+        worksheet.write('A3', 'DATA INIZIO:')
+        worksheet.write('B3', data_inizio.strftime('%d/%m/%Y'))
+        worksheet.write('A4', 'DATA FINE:')
+        worksheet.write('B4', data_fine.strftime('%d/%m/%Y'))
+        worksheet.write('A5', 'RICARICO:')
+        worksheet.write('B5', ricarico)
+
+        text_format = writer.book.add_format({'num_format': '@'})
+        worksheet.set_column('L:L', 20, text_format)
+
+        last_data_row = len(chunk_df) + start_row
+        empty_row = last_data_row + 1
+        worksheet.write(f'N{empty_row}', "")
+        worksheet.write(f'O{empty_row}', "")
+
+        total_row = empty_row + 2
+        number_format = writer.book.add_format({'num_format': '#,##0.00'})
+        worksheet.write_formula(f'N{total_row}', f"=SUM(N{start_row+2}:N{last_data_row + 1})", number_format)
+        worksheet.write_formula(f'O{total_row}', f"=SUM(O{start_row+2}:O{last_data_row + 1})", number_format)
+        worksheet.set_column('N:N', None, number_format)
+        worksheet.set_column('O:O', None, number_format)
+
 # Funzione per connettersi a Google Sheets
 def connect_to_gsheet():
     credentials = {
@@ -147,10 +187,7 @@ def write_to_gsheet(data, sheet_url):
 
     st.success(f"Dati aggiornati o aggiunti su Google Sheet.")
 
-
-
-
-# Streamlit app
+# Streamlit app e scrittura del file
 st.title('Asics Xmag Lineare')
 
 # Campi di input per l'intestazione
@@ -212,4 +249,31 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
             # Scrivi i dati nel Google Sheet
             write_to_gsheet(gsheet_data, google_sheet_url)
 
-            st.success("Dati scritti con successo su Google Sheet!")
+            # Dividi i dati per genere
+            uomo_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UOMO', axis=1)]
+            donna_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'DONNA', axis=1)]
+
+            uomo_output = io.BytesIO()
+            donna_output = io.BytesIO()
+
+            # Genera file Excel per UOMO
+            if not uomo_df.empty:
+                with pd.ExcelWriter(uomo_output, engine='xlsxwriter') as writer_uomo:
+                    write_data_in_chunks(writer_uomo, uomo_df, stagione, data_inizio, data_fine, ricarico)
+                st.download_button(
+                    label="Download File UOMO",
+                    data=uomo_output.getvalue(),
+                    file_name="uomo_processed_file.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+
+            # Genera file Excel per DONNA
+            if not donna_df.empty:
+                with pd.ExcelWriter(donna_output, engine='xlsxwriter') as writer_donna:
+                    write_data_in_chunks(writer_donna, donna_df, stagione, data_inizio, data_fine, ricarico)
+                st.download_button(
+                    label="Download File DONNA",
+                    data=donna_output.getvalue(),
+                    file_name="donna_processed_file.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
