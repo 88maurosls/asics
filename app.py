@@ -142,12 +142,14 @@ def connect_to_gsheet():
     return client
 
 # Funzione per scrivere dati su Google Sheets
-# Funzione per scrivere dati su Google Sheets in blocco
+# Funzione per scrivere dati su Google Sheets nel foglio specificato
 def write_to_gsheet(data, sheet_url):
     client = connect_to_gsheet()
     # Apri il Google Sheet con l'URL fornito
     sheet = client.open_by_url(sheet_url)
-    worksheet = sheet.get_worksheet(0)  # Seleziona il primo foglio
+    
+    # Seleziona il foglio chiamato "Gender"
+    worksheet = sheet.worksheet("Gender")
     
     # Trova la prima riga vuota
     next_row = len(worksheet.get_all_values()) + 1
@@ -155,9 +157,10 @@ def write_to_gsheet(data, sheet_url):
     # Prepara i dati da scrivere in formato di lista di liste
     rows = [[articolo, colore, gender] for (articolo, colore, gender) in data]
 
-    # Scrivi i dati in un range
+    # Scrivi i dati in un range (A, B, C per Articolo, Colore e Gender)
     cell_range = f'A{next_row}:C{next_row + len(rows) - 1}'
     worksheet.update(cell_range, rows)
+
 
 
 # Streamlit app
