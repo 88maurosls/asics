@@ -81,18 +81,21 @@ def process_file(file, colors_mapping):
     return expanded_df
 
 # Funzione per suddividere i dati in fogli di massimo 50 righe e aggiungere l'intestazione
+# Funzione per suddividere i dati in fogli di massimo 50 righe e aggiungere l'intestazione
 def write_data_in_chunks(writer, df, sheet_name_base, stagione, data_inizio, data_fine, ricarico):
     num_chunks = len(df) // 50 + (1 if len(df) % 50 > 0 else 0)  # Calcola il numero di fogli necessari
     for i in range(num_chunks):
         chunk_df = df[i*50:(i+1)*50]  # Estrai un blocco di massimo 50 righe
-        sheet_name = f"{sheet_name_base}" if i == 0 else f"{sheet_name_base} {i+1}"  # Nome del foglio (UOMO, UOMO 2, etc.)
+
+        # Utilizza i nomi standard come Foglio1, Foglio2, ecc.
+        sheet_name = None  # Questo utilizza i nomi standard "Foglio1", "Foglio2", ecc.
 
         # Scrivi i dati del DataFrame
         start_row = 9  # Riga in cui iniziano i dati (10 per l'utente)
         chunk_df.to_excel(writer, sheet_name=sheet_name, startrow=start_row, index=False)
 
         # Scrivi l'intestazione fissa nelle prime righe
-        worksheet = writer.sheets[sheet_name]
+        worksheet = writer.sheets[sheet_name or f'Sheet{i+1}']  # Nome di default Foglio1, Foglio2, ecc.
         worksheet.write('A1', 'STAGIONE:')
         worksheet.write('B1', f"'{stagione}")  # Inserisci il valore di STAGIONE con apice
         worksheet.write('A2', 'TIPO:')
@@ -110,18 +113,18 @@ def write_data_in_chunks(writer, df, sheet_name_base, stagione, data_inizio, dat
 
         # Trova l'ultima riga dei dati
         last_data_row = len(chunk_df) + start_row
-        
+
         # Lascia una riga vuota
         empty_row = last_data_row + 1  # Riga vuota subito dopo l'ultima riga di dati
         worksheet.write(f'N{empty_row}', "")  # Riga vuota per Qta
         worksheet.write(f'O{empty_row}', "")  # Riga vuota per Tot Costo
-        
+
         # Aggiungi la somma subito sotto la riga vuota
         total_row = empty_row + 2  # Riga per le somme, aggiungiamo +2 per lasciare una riga bianca
         number_format = writer.book.add_format({'num_format': '#,##0.00'})  # Formato numerico con due decimali
         worksheet.write_formula(f'N{total_row}', f"=SUM(N{start_row+2}:N{last_data_row + 1})", number_format)  # Somma per la colonna Qta
         worksheet.write_formula(f'O{total_row}', f"=SUM(O{start_row+2}:O{last_data_row + 1})", number_format)  # Somma per la colonna Tot Costo
-        
+
         # Applica la formattazione numerica con due decimali alle colonne Qta e Tot Costo
         worksheet.set_column('N:N', None, number_format)
         worksheet.set_column('O:O', None, number_format)
