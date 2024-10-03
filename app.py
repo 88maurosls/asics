@@ -20,8 +20,24 @@ def expand_rows(df):
     expanded_df['Tot Costo'] = expanded_df['Costo']
     return expanded_df
 
+# Funzione per caricare il file colors.txt e restituire un dizionario di mapping
+def load_colors_mapping(file_path):
+    colors_mapping = {}
+    with open(file_path, 'r') as file:
+        for line in file:
+            key, value = line.strip().split(';')
+            colors_mapping[key] = value
+    return colors_mapping
+
+# Funzione per determinare il valore di "Base Color"
+def get_base_color(color_name, colors_mapping):
+    for key in colors_mapping:
+        if color_name.upper().startswith(key):
+            return colors_mapping[key]
+    return ""  # Se non trovi corrispondenza, lascia vuoto
+
 # Funzione per elaborare ogni file caricato
-def process_file(file):
+def process_file(file, colors_mapping):
     df = pd.read_excel(file, dtype={'Color code': str, 'EAN code': str})  # Leggi "Color code" e "EAN code" come stringhe
     
     # Crea il DataFrame di output con le colonne richieste
@@ -31,7 +47,7 @@ def process_file(file):
         "Categoria": "CALZATURE",
         "Subcategoria": "Sneakers",
         "Colore": df["Color code"].apply(lambda x: x.zfill(3)),  # Mantieni gli zeri iniziali
-        "Base Color": "",
+        "Base Color": df["Color name"].apply(lambda x: get_base_color(x, colors_mapping)),  # Assegna il "Base Color"
         "Made in": "",
         "Sigla Bimbo": "",
         "Costo": df["Unit price"].apply(clean_price),  # Pulisci e converti i prezzi in numeri
@@ -72,6 +88,9 @@ def write_data_in_chunks(writer, df, sheet_name_base):
 # Streamlit app e scrittura del file
 st.title('Asics Xmag')
 
+# Carica il file colors.txt e crea il mapping dei colori
+colors_mapping = load_colors_mapping("colors.txt")  # Modifica con il path corretto per il file colors.txt
+
 # Permetti l'upload di più file
 uploaded_files = st.file_uploader("Choose Excel files", accept_multiple_files=True)
 
@@ -79,7 +98,7 @@ if uploaded_files:
     processed_dfs = []
     
     for uploaded_file in uploaded_files:
-        processed_dfs.append(process_file(uploaded_file))
+        processed_dfs.append(process_file(uploaded_file, colors_mapping))
     
     # Concatenate tutti i DataFrame
     final_df = pd.concat(processed_dfs, ignore_index=True)
