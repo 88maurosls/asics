@@ -35,6 +35,7 @@ def process_file(file):
         "Retail": df["Unit price"].apply(clean_price) * 2,  # Moltiplica per 2
         "Taglia": df["Size US"].apply(format_taglia),  # Formatta la colonna Taglia
         "Barcode": df["EAN code"],  # Tratta il barcode come stringa
+        "EAN": "",  # Colonna vuota aggiunta subito dopo Barcode
         "Qta": df["Quantity"],
         "Tot Costo": "",
         "Materiale": "",
