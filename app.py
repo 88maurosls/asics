@@ -21,11 +21,12 @@ def expand_rows(df):
     return expanded_df
 
 # Funzione per caricare il file color.txt e restituire un dizionario di mapping
-def load_colors_mapping(file):
+def load_colors_mapping(file_path):
     colors_mapping = {}
-    for line in file:
-        key, value = line.decode("utf-8").strip().split(';')  # Decodifica e crea il mapping
-        colors_mapping[key] = value
+    with open(file_path, 'r', encoding='utf-8') as file:
+        for line in file:
+            key, value = line.strip().split(';')
+            colors_mapping[key] = value
     return colors_mapping
 
 # Funzione per determinare il valore di "Base Color"
@@ -87,58 +88,54 @@ def write_data_in_chunks(writer, df, sheet_name_base):
 # Streamlit app e scrittura del file
 st.title('Asics Xmag')
 
-# Carica il file color.txt tramite Streamlit
-color_file = st.file_uploader("Carica il file color.txt", type="txt")
+# Carica il file color.txt dalla directory del progetto
+colors_mapping = load_colors_mapping("color.txt")  # Usa il percorso relativo alla main folder
 
-if color_file:
-    # Carica il mapping dei colori dal file
-    colors_mapping = load_colors_mapping(color_file)
+# Permetti l'upload di più file Excel
+uploaded_files = st.file_uploader("Scegli i file Excel", accept_multiple_files=True)
 
-    # Permetti l'upload di più file Excel
-    uploaded_files = st.file_uploader("Scegli i file Excel", accept_multiple_files=True)
+if uploaded_files:
+    processed_dfs = []
+    
+    for uploaded_file in uploaded_files:
+        processed_dfs.append(process_file(uploaded_file, colors_mapping))
+    
+    # Concatenate tutti i DataFrame
+    final_df = pd.concat(processed_dfs, ignore_index=True)
 
-    if uploaded_files:
-        processed_dfs = []
-        
-        for uploaded_file in uploaded_files:
-            processed_dfs.append(process_file(uploaded_file, colors_mapping))
-        
-        # Concatenate tutti i DataFrame
-        final_df = pd.concat(processed_dfs, ignore_index=True)
+    # Seleziona solo le combinazioni uniche di "Articolo" e "Colore"
+    unique_combinations = final_df[["Articolo", "Colore"]].drop_duplicates()
 
-        # Seleziona solo le combinazioni uniche di "Articolo" e "Colore"
-        unique_combinations = final_df[["Articolo", "Colore"]].drop_duplicates()
+    st.write("Anteprima delle combinazioni uniche di Articolo e Colore:")
 
-        st.write("Anteprima delle combinazioni uniche di Articolo e Colore:")
+    # Dizionario per raccogliere il flag UOMO/DONNA per ogni combinazione
+    selections = {}
 
-        # Dizionario per raccogliere il flag UOMO/DONNA per ogni combinazione
-        selections = {}
+    # Visualizzare l'anteprima dei dati unici con opzione per UOMO/DONNA
+    for index, row in unique_combinations.iterrows():
+        flag = st.selectbox(f"{row['Articolo']}-{row['Colore']}", options=["Seleziona...", "UOMO", "DONNA"], key=index)  # Selezione esplicita
+        selections[(row['Articolo'], row['Colore'])] = flag
 
-        # Visualizzare l'anteprima dei dati unici con opzione per UOMO/DONNA
-        for index, row in unique_combinations.iterrows():
-            flag = st.selectbox(f"{row['Articolo']}-{row['Colore']}", options=["Seleziona...", "UOMO", "DONNA"], key=index)  # Selezione esplicita
-            selections[(row['Articolo'], row['Colore'])] = flag
+    if st.button("Elabora File"):
+        # Controlla se tutte le selezioni sono valide (UOMO o DONNA)
+        if any(flag == "Seleziona..." for flag in selections.values()):
+            st.error("Devi selezionare UOMO o DONNA per tutte le combinazioni!")
+        else:
+            # Filtra i dati in base alla selezione UOMO/DONNA
+            uomo_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UOMO', axis=1)]
+            donna_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'DONNA', axis=1)]
 
-        if st.button("Elabora File"):
-            # Controlla se tutte le selezioni sono valide (UOMO o DONNA)
-            if any(flag == "Seleziona..." for flag in selections.values()):
-                st.error("Devi selezionare UOMO o DONNA per tutte le combinazioni!")
-            else:
-                # Filtra i dati in base alla selezione UOMO/DONNA
-                uomo_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UOMO', axis=1)]
-                donna_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'DONNA', axis=1)]
+            # Crea un file in memoria per il download
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                # Scrivi i dati in blocchi di 50 righe separati in fogli distinti
+                write_data_in_chunks(writer, uomo_df, 'UOMO')
+                write_data_in_chunks(writer, donna_df, 'DONNA')
 
-                # Crea un file in memoria per il download
-                output = io.BytesIO()
-                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                    # Scrivi i dati in blocchi di 50 righe separati in fogli distinti
-                    write_data_in_chunks(writer, uomo_df, 'UOMO')
-                    write_data_in_chunks(writer, donna_df, 'DONNA')
-
-                # Fornisci un pulsante per scaricare il file elaborato
-                st.download_button(
-                    label="Download Processed Excel",
-                    data=output.getvalue(),
-                    file_name="processed_file.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+            # Fornisci un pulsante per scaricare il file elaborato
+            st.download_button(
+                label="Download Processed Excel",
+                data=output.getvalue(),
+                file_name="processed_file.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
