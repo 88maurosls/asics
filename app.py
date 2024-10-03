@@ -79,18 +79,33 @@ def process_file(file, colors_mapping):
     
     return expanded_df
 
-# Funzione per suddividere i dati in fogli di massimo 50 righe
+# Funzione per scrivere l'intestazione e i dati in blocchi di massimo 50 righe
 def write_data_in_chunks(writer, df, sheet_name_base):
     num_chunks = len(df) // 50 + (1 if len(df) % 50 > 0 else 0)  # Calcola il numero di fogli necessari
     for i in range(num_chunks):
         chunk_df = df[i*50:(i+1)*50]  # Estrai un blocco di massimo 50 righe
         sheet_name = f"{sheet_name_base}" if i == 0 else f"{sheet_name_base} {i+1}"  # Nome del foglio (UOMO, UOMO 2, etc.)
-        chunk_df.to_excel(writer, sheet_name=sheet_name, index=False)
-        
+        worksheet = writer.book.add_worksheet(sheet_name)
+
+        # Scrivi l'intestazione nelle prime 9 righe
+        worksheet.write('A1', 'STAGIONE:')
+        worksheet.write('A2', 'TIPO:')
+        worksheet.write('A3', 'DATA INIZIO:')
+        worksheet.write('A4', 'DATA FINE:')
+        worksheet.write('A5', 'RICARICO:')
+        # Puoi aggiungere altre righe qui se necessario
+
+        # Scrivi l'intestazione delle colonne nella riga 10
+        for col_num, value in enumerate(df.columns):
+            worksheet.write(9, col_num, value)  # Riga 10 in Excel è indice 9 in zero-indexed
+
+        # Scrivi i dati a partire dalla riga 11 (indice 10)
+        for row_num, row_data in chunk_df.iterrows():
+            for col_num, value in enumerate(row_data):
+                worksheet.write(row_num + 10, col_num, value)  # Riga 11 (indice 10)
+
         # Imposta la colonna "Barcode" come testo per evitare la notazione scientifica
-        worksheet = writer.sheets[sheet_name]
-        text_format = writer.book.add_format({'num_format': '@'})  # Formato per trattare come testo
-        worksheet.set_column('L:L', 20, text_format)  # Formatta la colonna Barcode come testo
+        worksheet.set_column('L:L', 20, writer.book.add_format({'num_format': '@'}))  # Colonna Barcode
 
 # Streamlit app e scrittura del file
 st.title('Asics Xmag')
