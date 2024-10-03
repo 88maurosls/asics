@@ -122,18 +122,18 @@ def write_data_in_chunks(writer, df, stagione, data_inizio, data_fine, ricarico)
 
 # Funzione per connettersi a Google Sheets
 def connect_to_gsheet():
-    # Usa i segreti in formato TOML salvati su Streamlit
+    # Usa i segreti in formato TOML salvati su Streamlit (modifica la sezione da gcp_service_account a gsheet)
     credentials = {
-        "type": st.secrets["gcp_service_account"]["type"],
-        "project_id": st.secrets["gcp_service_account"]["project_id"],
-        "private_key_id": st.secrets["gcp_service_account"]["private_key_id"],
-        "private_key": st.secrets["gcp_service_account"]["private_key"],
-        "client_email": st.secrets["gcp_service_account"]["client_email"],
-        "client_id": st.secrets["gcp_service_account"]["client_id"],
-        "auth_uri": st.secrets["gcp_service_account"]["auth_uri"],
-        "token_uri": st.secrets["gcp_service_account"]["token_uri"],
-        "auth_provider_x509_cert_url": st.secrets["gcp_service_account"]["auth_provider_x509_cert_url"],
-        "client_x509_cert_url": st.secrets["gcp_service_account"]["client_x509_cert_url"]
+        "type": st.secrets["gsheet"]["type"],
+        "project_id": st.secrets["gsheet"]["project_id"],
+        "private_key_id": st.secrets["gsheet"]["private_key_id"],
+        "private_key": st.secrets["gsheet"]["private_key"],
+        "client_email": st.secrets["gsheet"]["client_email"],
+        "client_id": st.secrets["gsheet"]["client_id"],
+        "auth_uri": st.secrets["gsheet"]["auth_uri"],
+        "token_uri": st.secrets["gsheet"]["token_uri"],
+        "auth_provider_x509_cert_url": st.secrets["gsheet"]["auth_provider_x509_cert_url"],
+        "client_x509_cert_url": st.secrets["gsheet"]["client_x509_cert_url"]
     }
 
     scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
