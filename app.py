@@ -79,35 +79,27 @@ def process_file(file, colors_mapping):
     
     return expanded_df
 
-# Funzione per scrivere l'intestazione e i dati in blocchi di massimo 50 righe
+# Funzione per suddividere i dati in fogli di massimo 50 righe e aggiungere l'intestazione
 def write_data_in_chunks(writer, df, sheet_name_base):
     num_chunks = len(df) // 50 + (1 if len(df) % 50 > 0 else 0)  # Calcola il numero di fogli necessari
     for i in range(num_chunks):
-        start_row = i * 50
-        end_row = min((i + 1) * 50, len(df))  # Assicurati di non eccedere il numero di righe disponibili
-        chunk_df = df.iloc[start_row:end_row]  # Estrai un blocco di massimo 50 righe
+        chunk_df = df[i*50:(i+1)*50]  # Estrai un blocco di massimo 50 righe
         sheet_name = f"{sheet_name_base}" if i == 0 else f"{sheet_name_base} {i+1}"  # Nome del foglio (UOMO, UOMO 2, etc.)
-        worksheet = writer.book.add_worksheet(sheet_name)
 
-        # Scrivi l'intestazione nelle prime 9 righe
+        # Scrivi i dati del DataFrame
+        chunk_df.to_excel(writer, sheet_name=sheet_name, startrow=9, index=False)
+
+        # Scrivi l'intestazione fissa nelle prime righe
+        worksheet = writer.sheets[sheet_name]
         worksheet.write('A1', 'STAGIONE:')
         worksheet.write('A2', 'TIPO:')
         worksheet.write('A3', 'DATA INIZIO:')
         worksheet.write('A4', 'DATA FINE:')
         worksheet.write('A5', 'RICARICO:')
-        # Puoi aggiungere altre righe qui se necessario
-
-        # Scrivi l'intestazione delle colonne nella riga 10
-        for col_num, value in enumerate(df.columns):
-            worksheet.write(9, col_num, value)  # Riga 10 in Excel è indice 9 in zero-indexed
-
-        # Scrivi i dati a partire dalla riga 11 (indice 10)
-        for row_num, row_data in chunk_df.iterrows():
-            for col_num, value in enumerate(row_data):
-                worksheet.write(row_num + 10, col_num, value)  # Riga 11 (indice 10)
 
         # Imposta la colonna "Barcode" come testo per evitare la notazione scientifica
-        worksheet.set_column('L:L', 20, writer.book.add_format({'num_format': '@'}))  # Colonna Barcode
+        text_format = writer.book.add_format({'num_format': '@'})  # Formato per trattare come testo
+        worksheet.set_column('L:L', 20, text_format)  # Colonna Barcode come testo
 
 # Streamlit app e scrittura del file
 st.title('Asics Xmag')
@@ -153,11 +145,11 @@ if uploaded_files:
             uomo_output = io.BytesIO()
             donna_output = io.BytesIO()
 
-            # Scrivi i dati di UOMO con la logica di suddivisione in blocchi di 50 righe
+            # Scrivi i dati di UOMO con la logica di suddivisione in blocchi di 50 righe e aggiungi l'intestazione
             with pd.ExcelWriter(uomo_output, engine='xlsxwriter') as writer_uomo:
                 write_data_in_chunks(writer_uomo, uomo_df, 'UOMO')
 
-            # Scrivi i dati di DONNA con la logica di suddivisione in blocchi di 50 righe
+            # Scrivi i dati di DONNA con la logica di suddivisione in blocchi di 50 righe e aggiungi l'intestazione
             with pd.ExcelWriter(donna_output, engine='xlsxwriter') as writer_donna:
                 write_data_in_chunks(writer_donna, donna_df, 'DONNA')
 
