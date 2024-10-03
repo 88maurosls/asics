@@ -93,13 +93,13 @@ def write_data_in_chunks(writer, df, sheet_name_base, stagione, data_inizio, dat
         # Scrivi l'intestazione fissa nelle prime righe
         worksheet = writer.sheets[sheet_name]
         worksheet.write('A1', 'STAGIONE:')
-        worksheet.write('B1', stagione)  # Inserisci il valore di STAGIONE
+        worksheet.write('B1', f"'{stagione}")  # Inserisci il valore di STAGIONE con apice
         worksheet.write('A2', 'TIPO:')
         worksheet.write('B2', 'ACCESSORI')  # Inserisci ACCESSORI accanto a TIPO
         worksheet.write('A3', 'DATA INIZIO:')
-        worksheet.write('B3', data_inizio.strftime("%d/%m/%Y"))  # Formatta correttamente la DATA INIZIO
+        worksheet.write('B3', f"'{data_inizio.strftime('%d/%m/%Y')}")  # Formatta correttamente la DATA INIZIO con apice
         worksheet.write('A4', 'DATA FINE:')
-        worksheet.write('B4', data_fine.strftime("%d/%m/%Y"))  # Formatta correttamente la DATA FINE
+        worksheet.write('B4', f"'{data_fine.strftime('%d/%m/%Y')}")  # Formatta correttamente la DATA FINE con apice
         worksheet.write('A5', 'RICARICO:')
         worksheet.write('B5', ricarico)  # Inserisci il valore di RICARICO
 
