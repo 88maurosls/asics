@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import io
+from datetime import datetime
 
 # Funzione per formattare la colonna Taglia
 def format_taglia(size_us):
@@ -96,9 +97,9 @@ def write_data_in_chunks(writer, df, sheet_name_base, stagione, data_inizio, dat
         worksheet.write('A2', 'TIPO:')
         worksheet.write('B2', 'ACCESSORI')  # Inserisci ACCESSORI accanto a TIPO
         worksheet.write('A3', 'DATA INIZIO:')
-        worksheet.write('B3', data_inizio)  # Inserisci il valore di DATA INIZIO
+        worksheet.write('B3', data_inizio.strftime("%d/%m/%Y"))  # Formatta correttamente la DATA INIZIO
         worksheet.write('A4', 'DATA FINE:')
-        worksheet.write('B4', data_fine)  # Inserisci il valore di DATA FINE
+        worksheet.write('B4', data_fine.strftime("%d/%m/%Y"))  # Formatta correttamente la DATA FINE
         worksheet.write('A5', 'RICARICO:')
         worksheet.write('B5', ricarico)  # Inserisci il valore di RICARICO
 
