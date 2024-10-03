@@ -110,7 +110,6 @@ def get_existing_gender(sheet_url):
 
     # Creare un dizionario {"Articolo-Colore": Gender} per compatibilità JSON
     gender_dict = {f"{row[0]}-{row[1]}": row[2] for row in data[1:]}  # Ignora l'intestazione
-    st.write("Dati recuperati dal Google Sheet:", gender_dict)  # Debugging: stampa i dati recuperati
     return gender_dict
 
 # Funzione per scrivere dati su Google Sheets
@@ -183,9 +182,6 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
         
         # Se il genere è già presente in Google Sheet, usalo, altrimenti usa "Seleziona..."
         preselected_gender = gender_dict.get(articolo_colore, "Seleziona...")
-        
-        # Debugging: stampa il valore di preselected_gender
-        st.write(f"Combinazione: {articolo_colore}, Preselezione: {preselected_gender}")
 
         flag = st.selectbox(
             f"{row['Articolo']}-{row['Colore']}", 
