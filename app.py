@@ -93,25 +93,21 @@ def write_data_in_chunks(writer, df, stagione, data_inizio, data_fine, ricarico)
         start_row = 9  # Riga in cui iniziano i dati (10 per l'utente)
         chunk_df.to_excel(writer, sheet_name=sheet_name, startrow=start_row, index=False)
 
-        # Recupera l'oggetto del foglio corrente
-        worksheet = writer.sheets[sheet_name]
-
         # Scrivi l'intestazione fissa nelle prime righe
         worksheet.write('A1', 'STAGIONE:')
-        worksheet.write('B1', f"'{stagione}")  # Inserisci il valore di STAGIONE con apice
+        worksheet.write('B1', stagione)  # Inserisci il valore di STAGIONE senza apice
         worksheet.write('A2', 'TIPO:')
         worksheet.write('B2', 'ACCESSORI')  # Inserisci ACCESSORI accanto a TIPO
         worksheet.write('A3', 'DATA INIZIO:')
-        worksheet.write('B3', f"'{data_inizio.strftime('%d/%m/%Y')}")  # Formatta correttamente la DATA INIZIO con apice
+        worksheet.write('B3', data_inizio.strftime('%d/%m/%Y'))  # Formatta correttamente la DATA INIZIO senza apice
         worksheet.write('A4', 'DATA FINE:')
-        worksheet.write('B4', f"'{data_fine.strftime('%d/%m/%Y')}")  # Formatta correttamente la DATA FINE con apice
+        worksheet.write('B4', data_fine.strftime('%d/%m/%Y'))  # Formatta correttamente la DATA FINE senza apice
         worksheet.write('A5', 'RICARICO:')
         worksheet.write('B5', ricarico)  # Inserisci il valore di RICARICO
-
-
-        # Imposta la colonna "Barcode" come testo per evitare la notazione scientifica
+        
+        # Imposta le celle delle colonne B come testo per evitare che Excel le interpreti automaticamente
         text_format = writer.book.add_format({'num_format': '@'})  # Formato per trattare come testo
-        worksheet.set_column('L:L', 20, text_format)  # Colonna Barcode come testo
+        worksheet.set_column('B:B', None, text_format)  # Imposta la colonna B come testo
 
         # Trova l'ultima riga dei dati
         last_data_row = len(chunk_df) + start_row
