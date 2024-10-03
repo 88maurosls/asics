@@ -96,9 +96,9 @@ def write_data_in_chunks(writer, df, stagione, data_inizio, data_fine, ricarico)
         worksheet.write('A2', 'TIPO:')
         worksheet.write('B2', 'ACCESSORI')
         worksheet.write('A3', 'DATA INIZIO:')
-        worksheet.write('B3', data_inizio.strftime('%d/%m/%Y'))  # Formatta la DATA INIZIO come giorno/mese/anno
+        worksheet.write('B3', data_inizio.strftime('%d/%m/%Y'))
         worksheet.write('A4', 'DATA FINE:')
-        worksheet.write('B4', data_fine.strftime('%d/%m/%Y'))  # Formatta la DATA FINE come giorno/mese/anno
+        worksheet.write('B4', data_fine.strftime('%d/%m/%Y'))
         worksheet.write('A5', 'RICARICO:')
         worksheet.write('B5', ricarico)
 
