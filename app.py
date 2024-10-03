@@ -53,6 +53,19 @@ def process_file(file):
     
     return expanded_df
 
+# Funzione per suddividere i dati in fogli di massimo 50 righe
+def write_data_in_chunks(writer, df, sheet_name_base):
+    num_chunks = len(df) // 50 + (1 if len(df) % 50 > 0 else 0)  # Calcola il numero di fogli necessari
+    for i in range(num_chunks):
+        chunk_df = df[i*50:(i+1)*50]  # Estrai un blocco di massimo 50 righe
+        sheet_name = f"{sheet_name_base}" if i == 0 else f"{sheet_name_base} {i+1}"  # Nome del foglio (UOMO, UOMO 2, etc.)
+        chunk_df.to_excel(writer, sheet_name=sheet_name, index=False)
+        
+        # Imposta la colonna "Barcode" come testo per evitare la notazione scientifica
+        worksheet = writer.sheets[sheet_name]
+        text_format = writer.book.add_format({'num_format': '@'})  # Formato per trattare come testo
+        worksheet.set_column('L:L', 20, text_format)  # Formatta la colonna Barcode come testo
+
 # Streamlit app e scrittura del file
 st.title('Asics Xmag')
 
@@ -93,16 +106,9 @@ if uploaded_files:
             # Crea un file in memoria per il download
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                # Scrivi i dati in due fogli separati
-                uomo_df.to_excel(writer, sheet_name='UOMO', index=False)
-                donna_df.to_excel(writer, sheet_name='DONNA', index=False)
-                
-                # Imposta la colonna "Barcode" come testo per evitare la notazione scientifica
-                worksheet_uomo = writer.sheets['UOMO']
-                worksheet_donna = writer.sheets['DONNA']
-                text_format = writer.book.add_format({'num_format': '@'})  # Formato per trattare come testo
-                worksheet_uomo.set_column('L:L', 20, text_format)  # Formatta la colonna Barcode come testo
-                worksheet_donna.set_column('L:L', 20, text_format)  # Formatta la colonna Barcode come testo
+                # Scrivi i dati in blocchi di 50 righe separati in fogli distinti
+                write_data_in_chunks(writer, uomo_df, 'UOMO')
+                write_data_in_chunks(writer, donna_df, 'DONNA')
 
             # Fornisci un pulsante per scaricare il file elaborato
             st.download_button(
