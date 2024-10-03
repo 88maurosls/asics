@@ -161,22 +161,22 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
             uomo_output = io.BytesIO()
             donna_output = io.BytesIO()
 
-            with pd.ExcelWriter(uomo_output, engine='xlsxwriter') as writer_uomo:
-                write_data_in_chunks(writer_uomo, uomo_df, stagione, data_inizio, data_fine, ricarico)
+            if not uomo_df.empty:
+                with pd.ExcelWriter(uomo_output, engine='xlsxwriter') as writer_uomo:
+                    write_data_in_chunks(writer_uomo, uomo_df, stagione, data_inizio, data_fine, ricarico)
+                st.download_button(
+                    label="Download File UOMO",
+                    data=uomo_output.getvalue(),
+                    file_name="uomo_processed_file.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
 
-            with pd.ExcelWriter(donna_output, engine='xlsxwriter') as writer_donna:
-                write_data_in_chunks(writer_donna, donna_df, stagione, data_inizio, data_fine, ricarico)
-
-            st.download_button(
-                label="Download File UOMO",
-                data=uomo_output.getvalue(),
-                file_name="uomo_processed_file.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-
-            st.download_button(
-                label="Download File DONNA",
-                data=donna_output.getvalue(),
-                file_name="donna_processed_file.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+            if not donna_df.empty:
+                with pd.ExcelWriter(donna_output, engine='xlsxwriter') as writer_donna:
+                    write_data_in_chunks(writer_donna, donna_df, stagione, data_inizio, data_fine, ricarico)
+                st.download_button(
+                    label="Download File DONNA",
+                    data=donna_output.getvalue(),
+                    file_name="donna_processed_file.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
