@@ -181,11 +181,11 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
 
             # Scrivi i dati di UOMO con la logica di suddivisione in blocchi di 50 righe e aggiungi l'intestazione
             with pd.ExcelWriter(uomo_output, engine='xlsxwriter') as writer_uomo:
-                write_data_in_chunks(writer_uomo, uomo_df, 'UOMO', stagione, data_inizio, data_fine, ricarico)
+                write_data_in_chunks(writer_uomo, uomo_df, stagione, data_inizio, data_fine, ricarico)
 
             # Scrivi i dati di DONNA con la logica di suddivisione in blocchi di 50 righe e aggiungi l'intestazione
             with pd.ExcelWriter(donna_output, engine='xlsxwriter') as writer_donna:
-                write_data_in_chunks(writer_donna, donna_df, 'DONNA', stagione, data_inizio, data_fine, ricarico)
+                write_data_in_chunks(writer_donna, donna_df, stagione, data_inizio, data_fine, ricarico)
 
             # Fornisci due pulsanti separati per scaricare i file UOMO e DONNA
             st.download_button(
