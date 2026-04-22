@@ -41,17 +41,14 @@ def load_colors_mapping(file_path):
 # Funzione per determinare il valore di "Base Color"
 def get_base_color(color_name, colors_mapping):
     for key in colors_mapping:
-        if str(color_name).upper().startswith(key):
+        if color_name.upper().startswith(key):
             return colors_mapping[key]
     return ""  # Se non trovi corrispondenza, lascia vuoto
 
 # Funzione per elaborare ogni file caricato
+# Funzione per elaborare ogni file caricato
 def process_file(file, colors_mapping, ricarico):
-    file.seek(0)
     df = pd.read_excel(file, dtype={'Color code': str, 'EAN code': str})
-
-    # Pulisce eventuali spazi nei nomi colonna
-    df.columns = df.columns.str.strip()
 
     # Filtra via le righe dove lo "Status" è "Rejected"
     df = df[df['Status'] != 'Rejected']
@@ -61,7 +58,7 @@ def process_file(file, colors_mapping, ricarico):
         "Descrizione": df["Item name"],
         "Categoria": "CALZATURE",
         "Subcategoria": "Sneakers",
-        "Colore": df["Color code"].apply(lambda x: str(x).zfill(3)),
+        "Colore": df["Color code"].apply(lambda x: x.zfill(3)),
         "Base Color": df["Color name"].apply(lambda x: get_base_color(x, colors_mapping)),
         "Made in": "",
         "Sigla Bimbo": "",
@@ -211,7 +208,7 @@ st.markdown('**[Scarica le Packing List da qui](https://b2b.asics.com/orders-ove
 colors_mapping = load_colors_mapping("color.txt")
 
 # Permetti l'upload di più file Excel
-uploaded_files = st.file_uploader("Scegli i file Excel", accept_multiple_files=True, type=["xlsx", "xls"])
+uploaded_files = st.file_uploader("Scegli i file Excel", accept_multiple_files=True)
 
 if uploaded_files and stagione and data_inizio and data_fine and ricarico:
     ricarico = float(ricarico)  # Converte RICARICO in float
@@ -222,14 +219,7 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
     gender_dict = get_existing_gender(google_sheet_url)
     
     for uploaded_file in uploaded_files:
-        try:
-            processed_df = process_file(uploaded_file, colors_mapping, ricarico)
-            processed_dfs.append(processed_df)
-        except Exception as e:
-            st.error(f"Errore nel file {uploaded_file.name}: {e}")
-    
-    if not processed_dfs:
-        st.stop()
+        processed_dfs.append(process_file(uploaded_file, colors_mapping, ricarico))
     
     final_df = pd.concat(processed_dfs, ignore_index=True)
 
