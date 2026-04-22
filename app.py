@@ -41,11 +41,10 @@ def load_colors_mapping(file_path):
 # Funzione per determinare il valore di "Base Color"
 def get_base_color(color_name, colors_mapping):
     for key in colors_mapping:
-        if color_name.upper().startswith(key):
+        if str(color_name).upper().startswith(key):
             return colors_mapping[key]
     return ""  # Se non trovi corrispondenza, lascia vuoto
 
-# Funzione per elaborare ogni file caricato
 # Funzione per elaborare ogni file caricato
 def process_file(file, colors_mapping, ricarico):
     df = pd.read_excel(file, dtype={'Color code': str, 'EAN code': str})
@@ -58,7 +57,7 @@ def process_file(file, colors_mapping, ricarico):
         "Descrizione": df["Item name"],
         "Categoria": "CALZATURE",
         "Subcategoria": "Sneakers",
-        "Colore": df["Color code"].apply(lambda x: x.zfill(3)),
+        "Colore": df["Color code"].apply(lambda x: str(x).zfill(3)),
         "Base Color": df["Color name"].apply(lambda x: get_base_color(x, colors_mapping)),
         "Made in": "",
         "Sigla Bimbo": "",
@@ -82,7 +81,6 @@ def process_file(file, colors_mapping, ricarico):
     expanded_df = expand_rows(output_df)
     
     return expanded_df
-
 
 # Funzione per suddividere i dati in fogli di massimo 50 righe e aggiungere l'intestazione
 def write_data_in_chunks(writer, df, stagione, data_inizio, data_fine, ricarico):
@@ -150,11 +148,9 @@ def get_existing_gender(sheet_url):
     sheet = client.open_by_url(sheet_url)
     worksheet = sheet.worksheet("Gender")
     
-    # Recupera tutti i valori dal foglio
     data = worksheet.get_all_values()
 
-    # Creare un dizionario {"Articolo-Colore": Gender} per compatibilità JSON
-    gender_dict = {f"{row[0]}-{row[1]}": row[2] for row in data[1:]}  # Ignora l'intestazione
+    gender_dict = {f"{row[0]}-{row[1]}": row[2] for row in data[1:]}
     return gender_dict
 
 # Funzione per scrivere o aggiornare dati su Google Sheets
@@ -163,34 +159,27 @@ def write_to_gsheet(data, sheet_url):
     sheet = client.open_by_url(sheet_url)
     worksheet = sheet.worksheet("Gender")
 
-    # Recupera i dati esistenti dal foglio
     existing_data = worksheet.get_all_values()
+    existing_entries = {f"{row[0]}-{row[1]}": idx+2 for idx, row in enumerate(existing_data[1:])}
 
-    # Ottieni le combinazioni già esistenti (Articolo, Colore) con il loro indice di riga
-    existing_entries = {f"{row[0]}-{row[1]}": idx+2 for idx, row in enumerate(existing_data[1:])}  # Ignora l'intestazione
-
-    # Prepara gli aggiornamenti in batch
     batch_updates = []
 
     for (articolo, colore, gender) in data:
         key = f"{articolo}-{colore}"
 
         if key in existing_entries:
-            # Se la combinazione esiste già, aggiorna la riga esistente
             row_to_update = existing_entries[key]
             batch_updates.append({
-                "range": f'C{row_to_update}',  # Aggiorna solo la colonna C (Gender)
+                "range": f'C{row_to_update}',
                 "values": [[gender]]
             })
         else:
-            # Altrimenti, aggiungi una nuova riga
             worksheet.append_row([articolo, colore, gender])
 
     if batch_updates:
-        # Esegui l'aggiornamento in batch
         worksheet.batch_update(batch_updates)
 
-    st.success(f"Dati aggiornati o aggiunti su Google Sheet.")
+    st.success("Dati aggiornati o aggiunti su Google Sheet.")
 
 # Streamlit app e scrittura del file
 st.title('Asics Xmag Lineare')
@@ -199,7 +188,7 @@ st.title('Asics Xmag Lineare')
 stagione = st.text_input("Inserisci STAGIONE")
 data_inizio = st.date_input("Inserisci DATA INIZIO")
 data_fine = st.date_input("Inserisci DATA FINE")
-ricarico = st.text_input("Inserisci RICARICO", value="2")  # Imposta 2 come valore predefinito
+ricarico = st.text_input("Inserisci RICARICO", value="2")
 
 # Aggiungi il contenuto testuale con il link
 st.markdown('**[Scarica le Packing List da qui](https://b2b.asics.com/orders-overview/order-history)**')
@@ -211,10 +200,9 @@ colors_mapping = load_colors_mapping("color.txt")
 uploaded_files = st.file_uploader("Scegli i file Excel", accept_multiple_files=True)
 
 if uploaded_files and stagione and data_inizio and data_fine and ricarico:
-    ricarico = float(ricarico)  # Converte RICARICO in float
+    ricarico = float(ricarico)
     processed_dfs = []
     
-    # Recupera il genere già presente nel foglio "Gender"
     google_sheet_url = "https://docs.google.com/spreadsheets/d/1p84nF9Tq-1ZJgQSEJcgrePLvQyGQ3cjt_1IZP5qPs00/edit?usp=sharing"
     gender_dict = get_existing_gender(google_sheet_url)
     
@@ -223,24 +211,45 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
     
     final_df = pd.concat(processed_dfs, ignore_index=True)
 
-    unique_combinations = final_df[["Articolo", "Colore"]].drop_duplicates()
+    unique_combinations = final_df[["Articolo", "Colore"]].drop_duplicates().reset_index(drop=True)
 
     st.write("Anteprima Articolo-Colore:")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        if st.button("ALL UNISEX"):
+            for index, row in unique_combinations.iterrows():
+                st.session_state[f"gender_{index}"] = "UNISEX"
+
+    with col2:
+        if st.button("ALL MEN"):
+            for index, row in unique_combinations.iterrows():
+                st.session_state[f"gender_{index}"] = "UOMO"
+
+    with col3:
+        if st.button("ALL WOMEN"):
+            for index, row in unique_combinations.iterrows():
+                st.session_state[f"gender_{index}"] = "DONNA"
 
     selections = {}
 
     for index, row in unique_combinations.iterrows():
-        articolo_colore = f"{row['Articolo']}-{row['Colore']}"  # Chiave come stringa unica
-        
-        # Se il genere è già presente in Google Sheet, usalo, altrimenti usa "Seleziona..."
+        articolo_colore = f"{row['Articolo']}-{row['Colore']}"
         preselected_gender = gender_dict.get(articolo_colore, "Seleziona...")
 
+        session_key = f"gender_{index}"
+        if session_key not in st.session_state:
+            st.session_state[session_key] = (
+                preselected_gender
+                if preselected_gender in ["UOMO", "DONNA", "UNISEX"]
+                else "Seleziona..."
+            )
+
         flag = st.selectbox(
-            f"{row['Articolo']}-{row['Colore']}", 
-            options=["Seleziona...", "UOMO", "DONNA", "UNISEX"], 
-            key=index, 
-            index=["Seleziona...", "UOMO", "DONNA", "UNISEX"].index(preselected_gender) 
-            if preselected_gender in ["UOMO", "DONNA", "UNISEX"] else 0
+            f"{row['Articolo']}-{row['Colore']}",
+            options=["Seleziona...", "UOMO", "DONNA", "UNISEX"],
+            key=session_key
         )
         selections[(row['Articolo'], row['Colore'])] = flag
 
@@ -248,22 +257,27 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
         if any(flag == "Seleziona..." for flag in selections.values()):
             st.error("Devi selezionare UOMO, DONNA o UNISEX per tutte le combinazioni!")
         else:
-            # Prepara i dati da inviare a Google Sheets
-            gsheet_data = [(row['Articolo'], row['Colore'], selections[(row['Articolo'], row['Colore'])]) for index, row in unique_combinations.iterrows()]
+            gsheet_data = [
+                (row['Articolo'], row['Colore'], selections[(row['Articolo'], row['Colore'])])
+                for index, row in unique_combinations.iterrows()
+            ]
             
-            # Scrivi i dati nel Google Sheet
             write_to_gsheet(gsheet_data, google_sheet_url)
 
-            # Dividi i dati per genere
-            uomo_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UOMO', axis=1)]
-            donna_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'DONNA', axis=1)]
-            unisex_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UNISEX', axis=1)]
+            uomo_df = final_df[
+                final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UOMO', axis=1)
+            ]
+            donna_df = final_df[
+                final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'DONNA', axis=1)
+            ]
+            unisex_df = final_df[
+                final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UNISEX', axis=1)
+            ]
 
             uomo_output = io.BytesIO()
             donna_output = io.BytesIO()
             unisex_output = io.BytesIO()
 
-            # Genera file Excel per UOMO
             if not uomo_df.empty:
                 with pd.ExcelWriter(uomo_output, engine='xlsxwriter') as writer_uomo:
                     write_data_in_chunks(writer_uomo, uomo_df, stagione, data_inizio, data_fine, ricarico)
@@ -274,7 +288,6 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
 
-            # Genera file Excel per DONNA
             if not donna_df.empty:
                 with pd.ExcelWriter(donna_output, engine='xlsxwriter') as writer_donna:
                     write_data_in_chunks(writer_donna, donna_df, stagione, data_inizio, data_fine, ricarico)
@@ -285,7 +298,6 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
 
-            # Genera file Excel per UNISEX
             if not unisex_df.empty:
                 with pd.ExcelWriter(unisex_output, engine='xlsxwriter') as writer_unisex:
                     write_data_in_chunks(writer_unisex, unisex_df, stagione, data_inizio, data_fine, ricarico)
