@@ -48,18 +48,26 @@ def get_base_color(color_name, colors_mapping):
 # Funzione per elaborare ogni file caricato
 # Funzione per elaborare ogni file caricato
 def process_file(file, colors_mapping, ricarico):
-    df = pd.read_excel(file, dtype={'Color code': str, 'EAN code': str})
+    # Leggi esplicitamente il foglio corretto
+    df = pd.read_excel(
+        file,
+        sheet_name="Delivery Items",
+        dtype={'Color code': str, 'EAN code': str}
+    )
 
-    # Filtra via le righe dove lo "Status" è "Rejected"
-    df = df[df['Status'] != 'Rejected']
-    
+    # Pulisci eventuali spazi nei nomi colonna
+    df.columns = df.columns.str.strip()
+
+    # Filtra via le righe dove lo Status è Rejected
+    df = df[df['Status'].astype(str).str.strip() != 'Rejected']
+
     output_df = pd.DataFrame({
         "Articolo": df["Trading code"],
         "Descrizione": df["Item name"],
         "Categoria": "CALZATURE",
         "Subcategoria": "Sneakers",
-        "Colore": df["Color code"].apply(lambda x: x.zfill(3)),
-        "Base Color": df["Color name"].apply(lambda x: get_base_color(x, colors_mapping)),
+        "Colore": df["Color code"].astype(str).str.zfill(3),
+        "Base Color": df["Color name"].apply(lambda x: get_base_color(str(x), colors_mapping)),
         "Made in": "",
         "Sigla Bimbo": "",
         "Costo": df["Unit price"].apply(clean_price),
@@ -67,8 +75,8 @@ def process_file(file, colors_mapping, ricarico):
         "Taglia": df["Size US"].apply(format_taglia),
         "Barcode": df["EAN code"],
         "EAN": "",
-        "Qta": df["Quantity"],
-        "Tot Costo": df["Unit price"].apply(clean_price) * df["Quantity"] * ricarico,
+        "Qta": pd.to_numeric(df["Quantity"], errors="coerce").fillna(0).astype(int),
+        "Tot Costo": df["Unit price"].apply(clean_price) * pd.to_numeric(df["Quantity"], errors="coerce").fillna(0).astype(int),
         "Materiale": "",
         "Spec. Materiale": "",
         "Misure": "",
@@ -78,9 +86,9 @@ def process_file(file, colors_mapping, ricarico):
         "Carryover": "",
         "HS Code": ""
     })
-    
+
     expanded_df = expand_rows(output_df)
-    
+
     return expanded_df
 
 
