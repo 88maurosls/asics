@@ -7,37 +7,31 @@ from datetime import datetime
 
 # Funzione per formattare la colonna Taglia
 def format_taglia(size_us):
-    size_str = str(size_us).strip()
-    if size_str.endswith(".0"):
-        size_str = size_str[:-2]
-    return size_str.replace(".5", "+")
+    size_str = str(size_us)
+    if ".0" in size_str:
+        size_str = size_str.replace(".0", "")  # Rimuovi il .0
+    return size_str.replace(".5", "+")  # Converti .5 in +
 
-# Funzione per pulire i prezzi
+# Funzione per pulire i prezzi (rimuovi simbolo dell'euro e converti in float)
 def clean_price(price):
-    price_str = str(price).strip()
-    price_str = price_str.replace("€", "").replace(",", "")
-    return float(price_str)
+    return float(str(price).replace("€", "").replace(",", "").strip())
 
 # Funzione per duplicare le righe in base al valore di Qta
 def expand_rows(df):
-    expanded_df = df.loc[df.index.repeat(df["Qta"])].copy()
-    expanded_df["Qta"] = 1
-    expanded_df["Tot Costo"] = expanded_df["Costo"]
-    return expanded_df.reset_index(drop=True)
+    expanded_df = df.loc[df.index.repeat(df['Qta'])].assign(Qta=1)
+    expanded_df['Tot Costo'] = expanded_df['Costo']
+    return expanded_df
 
 # Funzione per caricare il file color.txt e restituire un dizionario di mapping
 def load_colors_mapping(file_path):
     colors_mapping = {}
-    with open(file_path, "r", encoding="utf-8") as file:
+    with open(file_path, 'r', encoding='utf-8') as file:
         for line in file:
             line = line.strip()
-            if not line:
-                continue
-
-            if ";" in line:
+            if ';' in line:
                 try:
-                    key, value = line.split(";", 1)
-                    colors_mapping[key.strip().upper()] = value.strip()
+                    key, value = line.split(';')
+                    colors_mapping[key] = value
                 except ValueError:
                     st.warning(f"Errore nel parsing della riga: {line}. Ignorata.")
             else:
@@ -46,112 +40,38 @@ def load_colors_mapping(file_path):
 
 # Funzione per determinare il valore di "Base Color"
 def get_base_color(color_name, colors_mapping):
-    color_name = str(color_name).strip().upper()
     for key in colors_mapping:
-        if color_name.startswith(key):
+        if str(color_name).upper().startswith(key):
             return colors_mapping[key]
-    return ""
-
-# Funzione per leggere un file Excel dal foglio corretto
-def read_delivery_items_sheet(file):
-    try:
-        df = pd.read_excel(
-            file,
-            sheet_name="Delivery Items",
-            dtype={"Color code": str, "EAN code": str}
-        )
-        return df
-    except ValueError:
-        # fallback nel caso il nome foglio abbia differenze strane
-        xls = pd.ExcelFile(file)
-        matching_sheet = None
-        for sheet_name in xls.sheet_names:
-            if str(sheet_name).strip().lower() == "delivery items":
-                matching_sheet = sheet_name
-                break
-
-        if matching_sheet is None:
-            raise ValueError(
-                f"Foglio 'Delivery Items' non trovato. Fogli presenti: {', '.join(xls.sheet_names)}"
-            )
-
-        df = pd.read_excel(
-            xls,
-            sheet_name=matching_sheet,
-            dtype={"Color code": str, "EAN code": str}
-        )
-        return df
+    return ""  # Se non trovi corrispondenza, lascia vuoto
 
 # Funzione per elaborare ogni file caricato
 def process_file(file, colors_mapping, ricarico):
-    df = read_delivery_items_sheet(file)
+    file.seek(0)
+    df = pd.read_excel(file, dtype={'Color code': str, 'EAN code': str})
 
-    # Pulisce i nomi colonna da eventuali spazi iniziali/finali
+    # Pulisce eventuali spazi nei nomi colonna
     df.columns = df.columns.str.strip()
 
-    required_columns = [
-        "Status",
-        "Trading code",
-        "Item name",
-        "Color code",
-        "Color name",
-        "Unit price",
-        "Size US",
-        "EAN code",
-        "Quantity"
-    ]
-
-    missing_columns = [col for col in required_columns if col not in df.columns]
-    if missing_columns:
-        raise ValueError(f"Mancano queste colonne: {', '.join(missing_columns)}")
-
-    # Filtra via le righe dove lo Status è Rejected
-    df = df[df["Status"].astype(str).str.strip().str.upper() != "REJECTED"].copy()
-
-    if df.empty:
-        return pd.DataFrame(columns=[
-            "Articolo", "Descrizione", "Categoria", "Subcategoria", "Colore",
-            "Base Color", "Made in", "Sigla Bimbo", "Costo", "Retail",
-            "Taglia", "Barcode", "EAN", "Qta", "Tot Costo", "Materiale",
-            "Spec. Materiale", "Misure", "Scala Taglie", "Tacco", "Suola",
-            "Carryover", "HS Code"
-        ])
-
-    # Conversioni sicure
-    df["Color code"] = df["Color code"].astype(str).str.strip().str.zfill(3)
-    df["EAN code"] = df["EAN code"].astype(str).str.strip()
-    df["Quantity"] = pd.to_numeric(df["Quantity"], errors="coerce").fillna(0).astype(int)
-
-    # Togli righe con quantità <= 0
-    df = df[df["Quantity"] > 0].copy()
-
-    if df.empty:
-        return pd.DataFrame(columns=[
-            "Articolo", "Descrizione", "Categoria", "Subcategoria", "Colore",
-            "Base Color", "Made in", "Sigla Bimbo", "Costo", "Retail",
-            "Taglia", "Barcode", "EAN", "Qta", "Tot Costo", "Materiale",
-            "Spec. Materiale", "Misure", "Scala Taglie", "Tacco", "Suola",
-            "Carryover", "HS Code"
-        ])
-
-    unit_prices = df["Unit price"].apply(clean_price)
-
+    # Filtra via le righe dove lo "Status" è "Rejected"
+    df = df[df['Status'] != 'Rejected']
+    
     output_df = pd.DataFrame({
         "Articolo": df["Trading code"],
         "Descrizione": df["Item name"],
         "Categoria": "CALZATURE",
         "Subcategoria": "Sneakers",
-        "Colore": df["Color code"],
+        "Colore": df["Color code"].apply(lambda x: str(x).zfill(3)),
         "Base Color": df["Color name"].apply(lambda x: get_base_color(x, colors_mapping)),
         "Made in": "",
         "Sigla Bimbo": "",
-        "Costo": unit_prices,
-        "Retail": unit_prices * ricarico,
+        "Costo": df["Unit price"].apply(clean_price),
+        "Retail": df["Unit price"].apply(clean_price) * ricarico,
         "Taglia": df["Size US"].apply(format_taglia),
         "Barcode": df["EAN code"],
         "EAN": "",
         "Qta": df["Quantity"],
-        "Tot Costo": unit_prices * df["Quantity"],
+        "Tot Costo": df["Unit price"].apply(clean_price) * df["Quantity"] * ricarico,
         "Materiale": "",
         "Spec. Materiale": "",
         "Misure": "",
@@ -161,64 +81,51 @@ def process_file(file, colors_mapping, ricarico):
         "Carryover": "",
         "HS Code": ""
     })
-
+    
     expanded_df = expand_rows(output_df)
+    
     return expanded_df
+
 
 # Funzione per suddividere i dati in fogli di massimo 50 righe e aggiungere l'intestazione
 def write_data_in_chunks(writer, df, stagione, data_inizio, data_fine, ricarico):
     num_chunks = len(df) // 50 + (1 if len(df) % 50 > 0 else 0)
-
     for i in range(num_chunks):
-        chunk_df = df.iloc[i * 50:(i + 1) * 50].copy()
+        chunk_df = df[i*50:(i+1)*50]
         sheet_name = f"Foglio{i+1}"
         start_row = 9
-
         chunk_df.to_excel(writer, sheet_name=sheet_name, startrow=start_row, index=False)
 
-        if sheet_name not in writer.sheets:
+        if sheet_name in writer.sheets:
+            worksheet = writer.sheets[sheet_name]
+        else:
             raise ValueError(f"Il foglio {sheet_name} non è stato trovato!")
 
-        worksheet = writer.sheets[sheet_name]
+        worksheet.write('A1', 'STAGIONE:')
+        worksheet.write('B1', stagione)
+        worksheet.write('A2', 'TIPO:')
+        worksheet.write('B2', 'ACCESSORI')
+        worksheet.write('A3', 'DATA INIZIO:')
+        worksheet.write('B3', data_inizio.strftime('%d/%m/%Y'))
+        worksheet.write('A4', 'DATA FINE:')
+        worksheet.write('B4', data_fine.strftime('%d/%m/%Y'))
+        worksheet.write('A5', 'RICARICO:')
+        worksheet.write('B5', ricarico)
 
-        worksheet.write("A1", "STAGIONE:")
-        worksheet.write("B1", stagione)
-        worksheet.write("A2", "TIPO:")
-        worksheet.write("B2", "ACCESSORI")
-        worksheet.write("A3", "DATA INIZIO:")
-        worksheet.write("B3", data_inizio.strftime("%d/%m/%Y"))
-        worksheet.write("A4", "DATA FINE:")
-        worksheet.write("B4", data_fine.strftime("%d/%m/%Y"))
-        worksheet.write("A5", "RICARICO:")
-        worksheet.write("B5", ricarico)
+        text_format = writer.book.add_format({'num_format': '@'})
+        worksheet.set_column('L:L', 20, text_format)
 
-        text_format = writer.book.add_format({"num_format": "@"})
-        worksheet.set_column("L:L", 20, text_format)
-
-        number_format = writer.book.add_format({"num_format": "#,##0.00"})
-        worksheet.set_column("I:I", None, number_format)
-        worksheet.set_column("J:J", None, number_format)
-        worksheet.set_column("O:O", None, number_format)
-
-        # Riga excel finale dei dati
-        # Header scritto alla riga 10, dati da riga 11
-        first_excel_data_row = start_row + 2
-        last_excel_data_row = start_row + 1 + len(chunk_df)
-
-        empty_row = last_excel_data_row + 1
-        worksheet.write(f"N{empty_row}", "")
-        worksheet.write(f"O{empty_row}", "")
+        last_data_row = len(chunk_df) + start_row
+        empty_row = last_data_row + 1
+        worksheet.write(f'N{empty_row}', "")
+        worksheet.write(f'O{empty_row}', "")
 
         total_row = empty_row + 2
-        worksheet.write_formula(
-            f"N{total_row}",
-            f"=SUM(N{first_excel_data_row}:N{last_excel_data_row})"
-        )
-        worksheet.write_formula(
-            f"O{total_row}",
-            f"=SUM(O{first_excel_data_row}:O{last_excel_data_row})",
-            number_format
-        )
+        number_format = writer.book.add_format({'num_format': '#,##0.00'})
+        worksheet.write_formula(f'N{total_row}', f"=SUM(N{start_row+2}:N{last_data_row + 1})", number_format)
+        worksheet.write_formula(f'O{total_row}', f"=SUM(O{start_row+2}:O{last_data_row + 1})", number_format)
+        worksheet.set_column('N:N', None, number_format)
+        worksheet.set_column('O:O', None, number_format)
 
 # Funzione per connettersi a Google Sheets
 def connect_to_gsheet():
@@ -235,10 +142,7 @@ def connect_to_gsheet():
         "client_x509_cert_url": st.secrets["gsheet"]["client_x509_cert_url"]
     }
 
-    scope = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive"
-    ]
+    scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
     creds = Credentials.from_service_account_info(credentials, scopes=scope)
     client = gspread.authorize(creds)
     return client
@@ -248,15 +152,12 @@ def get_existing_gender(sheet_url):
     client = connect_to_gsheet()
     sheet = client.open_by_url(sheet_url)
     worksheet = sheet.worksheet("Gender")
-
+    
+    # Recupera tutti i valori dal foglio
     data = worksheet.get_all_values()
-    gender_dict = {}
 
-    for row in data[1:]:
-        if len(row) >= 3:
-            key = f"{row[0]}-{str(row[1]).zfill(3)}"
-            gender_dict[key] = row[2]
-
+    # Creare un dizionario {"Articolo-Colore": Gender} per compatibilità JSON
+    gender_dict = {f"{row[0]}-{row[1]}": row[2] for row in data[1:]}  # Ignora l'intestazione
     return gender_dict
 
 # Funzione per scrivere o aggiornare dati su Google Sheets
@@ -265,132 +166,116 @@ def write_to_gsheet(data, sheet_url):
     sheet = client.open_by_url(sheet_url)
     worksheet = sheet.worksheet("Gender")
 
+    # Recupera i dati esistenti dal foglio
     existing_data = worksheet.get_all_values()
-    existing_entries = {}
 
-    for idx, row in enumerate(existing_data[1:], start=2):
-        if len(row) >= 2:
-            key = f"{row[0]}-{str(row[1]).zfill(3)}"
-            existing_entries[key] = idx
+    # Ottieni le combinazioni già esistenti (Articolo, Colore) con il loro indice di riga
+    existing_entries = {f"{row[0]}-{row[1]}": idx+2 for idx, row in enumerate(existing_data[1:])}  # Ignora l'intestazione
 
+    # Prepara gli aggiornamenti in batch
     batch_updates = []
-    rows_to_append = []
 
-    for articolo, colore, gender in data:
-        key = f"{articolo}-{str(colore).zfill(3)}"
+    for (articolo, colore, gender) in data:
+        key = f"{articolo}-{colore}"
 
         if key in existing_entries:
+            # Se la combinazione esiste già, aggiorna la riga esistente
             row_to_update = existing_entries[key]
             batch_updates.append({
-                "range": f"C{row_to_update}",
+                "range": f'C{row_to_update}',  # Aggiorna solo la colonna C (Gender)
                 "values": [[gender]]
             })
         else:
-            rows_to_append.append([articolo, str(colore).zfill(3), gender])
-
-    if rows_to_append:
-        worksheet.append_rows(rows_to_append)
+            # Altrimenti, aggiungi una nuova riga
+            worksheet.append_row([articolo, colore, gender])
 
     if batch_updates:
+        # Esegui l'aggiornamento in batch
         worksheet.batch_update(batch_updates)
 
-    st.success("Dati aggiornati o aggiunti su Google Sheet.")
+    st.success(f"Dati aggiornati o aggiunti su Google Sheet.")
 
-# Streamlit app
-st.title("Asics Xmag Lineare")
+# Streamlit app e scrittura del file
+st.title('Asics Xmag Lineare')
 
+# Campi di input per l'intestazione
 stagione = st.text_input("Inserisci STAGIONE")
 data_inizio = st.date_input("Inserisci DATA INIZIO")
 data_fine = st.date_input("Inserisci DATA FINE")
-ricarico = st.text_input("Inserisci RICARICO", value="2")
+ricarico = st.text_input("Inserisci RICARICO", value="2")  # Imposta 2 come valore predefinito
 
-st.markdown("**[Scarica le Packing List da qui](https://b2b.asics.com/orders-overview/order-history)**")
+# Aggiungi il contenuto testuale con il link
+st.markdown('**[Scarica le Packing List da qui](https://b2b.asics.com/orders-overview/order-history)**')
 
+# Carica il file color.txt dalla directory del progetto
 colors_mapping = load_colors_mapping("color.txt")
+
+# Permetti l'upload di più file Excel
 uploaded_files = st.file_uploader("Scegli i file Excel", accept_multiple_files=True, type=["xlsx", "xls"])
 
 if uploaded_files and stagione and data_inizio and data_fine and ricarico:
-    try:
-        ricarico = float(str(ricarico).replace(",", "."))
-    except ValueError:
-        st.error("Il valore del RICARICO non è valido.")
-        st.stop()
-
+    ricarico = float(ricarico)  # Converte RICARICO in float
     processed_dfs = []
+    
+    # Recupera il genere già presente nel foglio "Gender"
     google_sheet_url = "https://docs.google.com/spreadsheets/d/1p84nF9Tq-1ZJgQSEJcgrePLvQyGQ3cjt_1IZP5qPs00/edit?usp=sharing"
     gender_dict = get_existing_gender(google_sheet_url)
-
-    st.write("Controllo file caricati:")
-
+    
     for uploaded_file in uploaded_files:
         try:
             processed_df = process_file(uploaded_file, colors_mapping, ricarico)
-
-            if processed_df.empty:
-                st.warning(f"{uploaded_file.name}: nessuna riga valida trovata.")
-            else:
-                st.success(f"{uploaded_file.name}: {len(processed_df)} righe elaborate.")
-
             processed_dfs.append(processed_df)
-
         except Exception as e:
             st.error(f"Errore nel file {uploaded_file.name}: {e}")
-
-    processed_dfs = [df for df in processed_dfs if not df.empty]
-
+    
     if not processed_dfs:
         st.stop()
-
+    
     final_df = pd.concat(processed_dfs, ignore_index=True)
 
-    unique_combinations = final_df[["Articolo", "Colore"]].drop_duplicates().reset_index(drop=True)
+    unique_combinations = final_df[["Articolo", "Colore"]].drop_duplicates()
 
     st.write("Anteprima Articolo-Colore:")
 
     selections = {}
 
     for index, row in unique_combinations.iterrows():
-        articolo_colore = f"{row['Articolo']}-{row['Colore']}"
+        articolo_colore = f"{row['Articolo']}-{row['Colore']}"  # Chiave come stringa unica
+        
+        # Se il genere è già presente in Google Sheet, usalo, altrimenti usa "Seleziona..."
         preselected_gender = gender_dict.get(articolo_colore, "Seleziona...")
 
-        options = ["Seleziona...", "UOMO", "DONNA", "UNISEX"]
-        default_index = options.index(preselected_gender) if preselected_gender in options else 0
-
         flag = st.selectbox(
-            f"{row['Articolo']}-{row['Colore']}",
-            options=options,
-            key=f"gender_{index}",
-            index=default_index
+            f"{row['Articolo']}-{row['Colore']}", 
+            options=["Seleziona...", "UOMO", "DONNA", "UNISEX"], 
+            key=index, 
+            index=["Seleziona...", "UOMO", "DONNA", "UNISEX"].index(preselected_gender) 
+            if preselected_gender in ["UOMO", "DONNA", "UNISEX"] else 0
         )
-        selections[(row["Articolo"], row["Colore"])] = flag
+        selections[(row['Articolo'], row['Colore'])] = flag
 
     if st.button("Elabora File"):
         if any(flag == "Seleziona..." for flag in selections.values()):
             st.error("Devi selezionare UOMO, DONNA o UNISEX per tutte le combinazioni!")
         else:
-            gsheet_data = [
-                (row["Articolo"], row["Colore"], selections[(row["Articolo"], row["Colore"])])
-                for _, row in unique_combinations.iterrows()
-            ]
-
+            # Prepara i dati da inviare a Google Sheets
+            gsheet_data = [(row['Articolo'], row['Colore'], selections[(row['Articolo'], row['Colore'])]) for index, row in unique_combinations.iterrows()]
+            
+            # Scrivi i dati nel Google Sheet
             write_to_gsheet(gsheet_data, google_sheet_url)
 
-            uomo_df = final_df[
-                final_df.apply(lambda x: selections[(x["Articolo"], x["Colore"])] == "UOMO", axis=1)
-            ]
-            donna_df = final_df[
-                final_df.apply(lambda x: selections[(x["Articolo"], x["Colore"])] == "DONNA", axis=1)
-            ]
-            unisex_df = final_df[
-                final_df.apply(lambda x: selections[(x["Articolo"], x["Colore"])] == "UNISEX", axis=1)
-            ]
+            # Dividi i dati per genere
+            uomo_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UOMO', axis=1)]
+            donna_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'DONNA', axis=1)]
+            unisex_df = final_df[final_df.apply(lambda x: selections[(x['Articolo'], x['Colore'])] == 'UNISEX', axis=1)]
 
             uomo_output = io.BytesIO()
             donna_output = io.BytesIO()
             unisex_output = io.BytesIO()
 
+            # Genera file Excel per UOMO
             if not uomo_df.empty:
-                with pd.ExcelWriter(uomo_output, engine="xlsxwriter") as writer_uomo:
+                with pd.ExcelWriter(uomo_output, engine='xlsxwriter') as writer_uomo:
                     write_data_in_chunks(writer_uomo, uomo_df, stagione, data_inizio, data_fine, ricarico)
                 st.download_button(
                     label="Download File UOMO",
@@ -399,8 +284,9 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
 
+            # Genera file Excel per DONNA
             if not donna_df.empty:
-                with pd.ExcelWriter(donna_output, engine="xlsxwriter") as writer_donna:
+                with pd.ExcelWriter(donna_output, engine='xlsxwriter') as writer_donna:
                     write_data_in_chunks(writer_donna, donna_df, stagione, data_inizio, data_fine, ricarico)
                 st.download_button(
                     label="Download File DONNA",
@@ -409,8 +295,9 @@ if uploaded_files and stagione and data_inizio and data_fine and ricarico:
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
 
+            # Genera file Excel per UNISEX
             if not unisex_df.empty:
-                with pd.ExcelWriter(unisex_output, engine="xlsxwriter") as writer_unisex:
+                with pd.ExcelWriter(unisex_output, engine='xlsxwriter') as writer_unisex:
                     write_data_in_chunks(writer_unisex, unisex_df, stagione, data_inizio, data_fine, ricarico)
                 st.download_button(
                     label="Download File UNISEX",
